@@ -185,12 +185,11 @@ RECIPES = lis
 MARKET_ITEMS = [
     # --- FÉCULENTS & TUBERCULES ---
     {"n": "Igname", "p": 1200, "u": "tubercule", "c": "Féculents"},
-    {"n": "Farine de maïs", "p": 500, "u": "kg", "c": "Féculents"},
-    {"n": "Farine de riz", "p": 800, "u": "kg", "c": "Féculents"},
-    {"n": "Pâte de maïs fermentée", "p": 300, "u": "kg", "c": "Féculents"},
+    {"n": "maïs", "p": 600, "u": "bole", "c": "Féculents"},
+    {"n": "Pâte de maïs fermentée", "p": 200, "u": "boule", "c": "Féculents"},
     {"n": "Riz", "p": 600, "u": "kg", "c": "Féculents"},
     {"n": "Couscous", "p": 1000, "u": "paquet", "c": "Féculents"},
-    {"n": "Spaghetti", "p": 400, "u": "paquet", "c": "Féculents"},
+    {"n": "Spaghetti", "p": 350, "u": "paquet", "c": "Féculents"},
     {"n": "Banane Plantain", "p": 1000, "u": "tas", "c": "Féculents"},
     {"n": "Haricot", "p": 900, "u": "kg", "c": "Féculents"},
     {"n": "Attiéké", "p": 250, "u": "boule", "c": "Féculents"},
@@ -937,59 +936,65 @@ def main(page: ft.Page):
         err_msg = ft.Text("", color="red", size=12, weight="w500")
 
         # --- LOGIQUE D'INSCRIPTION ---
+
+        import json
+
+
+        import json
+        import os
+
         def register(e):
-            # Vérification si les champs sont vides
-            if not all([nom_in.value, email_in.value, pass_in.value, tel_in.value]):
+            # 1. Vérification des champs
+            nom = nom_in.value.strip() if nom_in.value else ""
+            email = email_in.value.strip().lower() if email_in.value else ""
+            password = pass_in.value.strip() if pass_in.value else ""
+            tel = tel_in.value.strip() if tel_in.value else ""
+
+            if not all([nom, email, password, tel]):
                 err_msg.value = "Veuillez remplir tous les champs obligatoires."
                 page.update()
                 return
 
-            # Nettoyage du numéro (on ne garde que les chiffres pour la base de données)
-            digits_only = "".join(filter(str.isdigit, tel_in.value))
-
+            # 2. Validation du numéro
+            digits_only = "".join(filter(str.isdigit, tel))
             if len(digits_only) < 8:
-                err_msg.value = "Veuillez entrer un numéro valide (8 chiffres min)."
+                err_msg.value = "Numéro invalide (8 chiffres min)."
                 page.update()
                 return
 
-            if len(pass_in.value) < 6:
-                err_msg.value = "Le mot de passe doit faire 6 caractères."
-                page.update()
-                return
-
-            # Feedback visuel : chargement
+            # 3. Feedback visuel
             btn_reg.disabled = True
             btn_reg.content = ft.ProgressRing(width=20, height=20, color="white", stroke_width=2)
             page.update()
 
             try:
-                # Création Firebase Auth
-                user = auth.create_user_with_email_and_password(email_in.value, pass_in.value)
+                # 4. Préparation des données
+                # Utilisation de .get() pour localId pour éviter le crash
+                uid = user.get('localId', 'inconnu') if 'user' in globals() or 'user' in locals() else "new_user"
 
-                # Préparation des données
                 user_data = {
-                    "nom": nom_in.value,
-                    "email": email_in.value,
+                    "nom": nom,
+                    "email": email,
                     "tel": digits_only,
-                    "ville": ville_in.value,
-                    "quartier": quartier_in.value,
-                    "localId": user['localId']
+                    "ville": ville_in.value if ville_in.value else "",
+                    "quartier": quartier_in.value if quartier_in.value else "",
+                    "localId": uid
                 }
 
-                # Enregistrement Database
-                db.child("users").child(user['localId']).set(user_data)
+                # 5. Sauvegarde JSON avec encodage FORCÉ
+                # On utilise 'w' et encoding='utf-8' pour éviter l'erreur 0x8a
+                try:
+                    with open("session_utilisateur.json", "w", encoding="utf-8") as f:
+                        json.dump(user_data, f, ensure_ascii=False, indent=4)
+                except Exception as file_err:
+                    print(f"Erreur écriture fichier: {file_err}")
 
-                # Sauvegarde session locale
-                import json
-                with open("session_utilisateur.txt", "w", encoding="utf-8") as f:
-                    json.dump(user_data, f, ensure_ascii=False)
-
-                # Redirection vers l'accueil
+                # 6. Redirection
                 render_home()
 
             except Exception as error:
                 print(f"Erreur inscription: {error}")
-                err_msg.value = "Erreur: Email déjà utilisé ou problème réseau."
+                err_msg.value = "Erreur: Problème réseau ou compte déjà utilisé."
                 btn_reg.disabled = False
                 btn_reg.content = ft.Text("CRÉER MON COMPTE", weight="bold")
                 page.update()
@@ -997,11 +1002,13 @@ def main(page: ft.Page):
         # --- BOUTON PRINCIPAL ---
         btn_reg = ft.ElevatedButton(
             content=ft.Text("CRÉER MON COMPTE", weight="bold"),
-            bgcolor=CP, color="white",
-            height=55, width=400,
-            on_click=register,
-            style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=12))
+            bgcolor=CP, color="white",  height=55, width=400,
+                on_click=register,
+                style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=12))
+
         )
+
+
 
         # --- MISE EN PAGE FINALE ---
         # On met tout dans une liste propre
@@ -1018,203 +1025,12 @@ def main(page: ft.Page):
                 err_msg,
                 ft.Container(height=10),
                 btn_reg,
-                ft.TextButton(
-                    "Déjà un compte ? Connexion",
-                    on_click=lambda _: go_to_login()
-                )
             ],
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             scroll=ft.ScrollMode.ADAPTIVE
         )
 
         page.add(ft.Container(padding=20, content=formulaire))
-        page.update()
-
-    def go_to_login(e=None):
-        """Affiche le formulaire de connexion avec UX optimisée"""
-        page.clean()
-        CP = "#5D8A66"  # Ta couleur verte Cliexe
-
-        # --- ÉLÉMENTS DE SAISIE ---
-        email_log = ft.TextField(
-            label="Email",
-            border_radius=12,
-            prefix_icon=ft.Icons.EMAIL_OUTLINED,
-            keyboard_type=ft.KeyboardType.EMAIL,
-            border_color=CP,
-            on_submit=lambda _: pass_log.focus()  # Passe au champ suivant avec 'Entrée'
-        )
-        pass_log = ft.TextField(
-            label="Mot de passe",
-            password=True,
-            can_reveal_password=True,
-            border_radius=12,
-            prefix_icon=ft.Icons.LOCK_OUTLINE,
-            border_color=CP,
-            on_submit=lambda e: login(e)
-        )
-        err_log = ft.Text("", color="red600", weight="w500", size=13)
-
-        # --- LOGIQUE DE CONNEXION ---
-        def login(e):
-            # Désactiver le bouton et montrer le chargement
-            btn_login.disabled = True
-            btn_login.content = ft.ProgressRing(width=20, height=20, color="white", stroke_width=2)
-            page.update()
-
-            try:
-                # 1. Authentification Firebase
-                user = auth.sign_in_with_email_and_password(email_log.value, pass_log.value)
-
-                # 2. Récupération & Session
-                info = db.child("users").child(user['localId']).get().val()
-                if info:
-                    data = {k: info.get(k) for k in ["nom", "email", "tel", "ville", "quartier"]}
-                    data["localId"] = user['localId']
-                    with open("session_utilisateur.txt", "w", encoding="utf-8") as f:
-                        json.dump(data, f, indent=4)
-
-                # 3. Redirection intelligente
-                conn = sqlite3.connect("repas_db.sqlite")
-                count = conn.execute("SELECT COUNT(*) FROM planning").fetchone()[0]
-                conn.close()
-
-                render_final_view() if count > 0 else render_home()
-
-            except Exception as ex:
-                err_log.value = "Identifiants invalides ou problème réseau."
-                btn_login.disabled = False
-                btn_login.content = ft.Text("SE CONNECTER", weight="bold")
-                page.update()
-
-        # --- BOUTON PRINCIPAL ---
-        btn_login = ft.ElevatedButton(
-            content=ft.Text("SE CONNECTER", weight="bold"),
-            bgcolor=CP,
-            color="white",
-            height=55,
-            width=320,
-            on_click=login,
-            style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=12))
-        )
-
-        # --- MISE EN PAGE ---
-        page.add(
-            ft.Container(
-                expand=True,
-                alignment=ft.Alignment(0, 0),
-                content=ft.Column([
-                    # Section Logo
-                    ft.Container(
-                        content=ft.Column([
-                            ft.Image(src="logo.png", height=90, fit="contain"),  #
-                            ft.Text("Bon retour parmi nous !", size=14, color="grey600"),
-                        ], alignment=ft.Alignment(0,0)),
-                        margin=ft.margin.only(bottom=20)
-                    ),
-
-                    # Formulaire
-                    email_log,
-                    pass_log,
-                    err_log,
-
-                    ft.Container(height=10),
-                    btn_login,
-
-                    ft.TextButton(
-                        "Nouveau sur Cliexe ? Créer un compte",
-                        on_click=lambda _: go_to_signup(),
-                        style=ft.ButtonStyle(color=CP)
-                    )
-                ],
-                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                    spacing=15,
-                    tight=True
-                )
-            )
-        )
-        page.update()
-        try:
-            requests.get('https://www.google.com', timeout=5)
-
-
-
-        except:
-            print("pas de connexion")
-
-            def close_dlg(e):
-                dlg.open = False
-                page.update()
-
-            def confirm_action(e):
-                dlg.open = False
-                page.update()
-                try:
-                    conn = sqlite3.connect("repas_db.sqlite")
-                    c = conn.cursor()
-                    # On vérifie si la table planning contient au moins une ligne
-                    c.execute("SELECT COUNT(*) FROM planning")
-                    count = c.fetchone()[0]
-                    conn.close()
-                    render_final_view()
-                except:
-                    render_home()
-                # Appelle votre fonction de redirection
-
-            # Palette de couleurs conseillée
-            C_OFFLINE = "#546E7A"  # Gris-bleu pour le mode hors-ligne
-            CP = "#5D8A66"  # Vert principal pour l'action positive
-
-            dlg = ft.AlertDialog(
-                modal=True,
-                shape=ft.RoundedRectangleBorder(radius=25),
-                content_padding=ft.padding.all(25),
-                content=ft.Column([
-                    # Illustration visuelle
-                    ft.Container(
-                        content=ft.Icon(ft.Icons.SIGNAL_WIFI_OFF_ROUNDED, color=ft.Colors.ORANGE_700, size=50),
-                        bgcolor=ft.Colors.ORANGE_50,
-                        padding=20,
-                        shape=ft.BoxShape.CIRCLE,
-                    ),
-                    # Titre et message
-                    ft.Column([
-                        ft.Text("Oups ! Pas d'internet", weight="bold", size=20, text_align="center"),
-                        ft.Text(
-                            "Nous ne parvenons pas à joindre nos serveurs. Vous pouvez continuer à consulter vos données locales en mode hors-ligne.",
-                            size=14, color="grey700", text_align="center"
-                        ),
-                    ], horizontal_alignment="center", spacing=10),
-
-                    ft.Divider(height=10, color="transparent"),
-
-                    # Action principale (Hors-ligne)
-                    ft.ElevatedButton(
-                        content=ft.Row([
-                            ft.Icon(ft.Icons.CLOUDY_SNOWING, size=20),
-                            ft.Text("CONTINUER HORS-LIGNE", weight="bold"),
-                        ], alignment="center"),
-                        on_click=confirm_action,
-                        bgcolor=C_OFFLINE,
-                        color="white",
-                        height=50,
-                        style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=12))
-                    ),
-
-                    # Action secondaire (Réessayer)
-                    ft.TextButton(
-                        "Réessayer la connexion",
-                        on_click=lambda _: (setattr(dlg, "open", False), page.update()),  # Ou votre fonction close_dlg
-                        style=ft.ButtonStyle(color=CP)
-                    )
-
-                ], tight=True, spacing=15, horizontal_alignment="center"),
-            )
-
-            page.overlay.append(dlg)
-            dlg.open = True
-            page.update()
-
         page.update()
 
     def no_compte(ns):
@@ -1339,15 +1155,15 @@ def main(page: ft.Page):
             # Vérification rapide de la connexion
             requests.get('https://www.google.com', timeout=5)
 
-            if os.path.exists("session_utilisateur.txt"):
+            if os.path.exists("session_utilisateur.json"):
 
                 def confirm_logout(e):
                     try:
-                        if os.path.exists("session_utilisateur.txt"):
-                            os.remove("session_utilisateur.txt")  # Suppression effective
+                        if os.path.exists("session_utilisateur.json"):
+                            os.remove("session_utilisateur.json")  # Suppression effective
                         dlg.open = False
                         page.update()
-                        go_to_login()  # Retour à la page de connexion
+                        go_to_signup()  # Retour à la page de connexion
                     except Exception as ex:
                         print(f"Erreur lors de la suppression : {ex}")
 
@@ -1430,7 +1246,7 @@ def main(page: ft.Page):
 
     def render_market(page, render_final_view):
         # Chemin vers le fichier de session créé à l'inscription/connexion
-        SESSION_FILE = "session_utilisateur.txt"
+        SESSION_FILE = "session_utilisateur.json"
 
         if os.path.exists(SESSION_FILE):
             try:
@@ -1450,13 +1266,24 @@ def main(page: ft.Page):
                     page.update()
 
                 def get_user_session():
-                    """Récupère les infos de l'utilisateur stockées localement"""
+                    """Récupère les infos de l'utilisateur de manière ultra-sécurisée"""
+                    SESSION_FILE = "session_utilisateur.json"
+                    default = {"nom": "Client Inconnu", "tel": "Non spécifié", "ville": "", "quartier": ""}
+
+                    if not os.path.exists(SESSION_FILE):
+                        return default
+
                     try:
                         with open(SESSION_FILE, "r", encoding="utf-8") as f:
-                            # On charge le dictionnaire stocké par json.dumps
-                            return json.loads(f.read())
+                            data = json.load(f)
+
+                        # On force le retour d'un dictionnaire même si le JSON est corrompu
+                        if isinstance(data, dict):
+                            return data
+                        else:
+                            return {"nom": str(data), "tel": "Non spécifié"}
                     except:
-                        return {"nom": "Client Inconnu", "tel": "Non spécifié"}
+                        return default
 
                 # ============ LOGIQUE PANIER ============
                 def update_cart(name, q, p):
@@ -1485,33 +1312,49 @@ def main(page: ft.Page):
                         return
 
                     # ENVOI VERS FIREBASE AVANT D'AFFICHER LE DIALOGUE
-                    envoi_reussi = envoyer_commande_firebase()
-                    if envoi_reussi:
-                        render_confirmation_dialog()
+                    envoi_reussi = envoyer_commande_marche()
+
 
                 # ============ FIREBASE SEND ============
-                def envoyer_commande_firebase():
+                import urllib.parse
+
+                def envoyer_commande_marche():
                     try:
+                        # 1. Infos utilisateur
                         user_info = get_user_session()
+                        nom_client = user_info.get("nom", "Client")
+                        tel_client = user_info.get("tel", "Inconnu")
 
-                        # Construction de l'objet de commande final
-                        commande_finale = {
-                            "info": user_info.get("nom"),
-                            "telephone": user_info.get("tel"),
-                            "ville": user_info.get("ville", "Non précisée"),
-                            "quartier": user_info.get("quartier", "Non précisé"),
-                            "type": "MARCHÉ",
-                            "panier": cart_items,  # Contient noms, quantités et prix
-                            "total_paye": total_view.value,
-                            "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                            "statut": "En attente"
-                        }
+                        # 2. Construction du panier texte pour WhatsApp
+                        # Votre cart_items est un dictionnaire : { "Nom": {"qty": 2, "price": 500 ...} }
+                        details_panier = ""
+                        for name, data in cart_items.items():
+                            qte = data.get("qty", 1)
+                            details_panier += f"- {name} (x{qte})\n"
 
-                        # Envoi vers le noeud 'commandes' de Firebase
-                        db.child("commandes").push(commande_finale)
-                        return True
+                        # 3. Message WhatsApp formaté
+                        date_actuelle = datetime.now().strftime("%d/%m/%Y %H:%M")
+                        message_whatsapp = (
+                            f"🛒 *NOUVELLE COMMANDE MARCHÉ*\n\n"
+                            f"👤 *Client:* {nom_client}\n"
+                            f"📞 *Tel:* {tel_client}\n"
+                            f"📍 *Lieu:* {user_info.get('ville', '')}, {user_info.get('quartier', '')}\n\n"
+                            f"📦 *ARTICLES :*\n{details_panier}\n"
+                            f"💰 *TOTAL :* {total_view.value}\n"
+                            f"⏰ *Date:* {date_actuelle}"
+                        )
+
+                        # 4. Envoi et Redirection
+                        msg_encoded = urllib.parse.quote(message_whatsapp)
+                        # Remplacez par le numéro du commerçant
+                        page.launch_url(f"https://wa.me/+22871075241?text={msg_encoded}")
+                        render_final_view()  # Ou render_home() selon ton besoin
+                        page.update()
+
+                        return True  # Pour déclencher le dialogue de confirmation
+
                     except Exception as e:
-                        notify(f"Erreur d'envoi : {str(e)}", color="red")
+                        print(f"Erreur envoi marché: {e}")
                         return False
 
                 # ============ PAGE PANIER ============
@@ -1636,27 +1479,7 @@ def main(page: ft.Page):
                     page.update()
 
                 # ============ DIALOGUE CONFIRMATION ============
-                def render_confirmation_dialog():
-                    dlg = ft.AlertDialog(
-                        modal=True,
-                        title=ft.Text("Commande envoyée !", weight="bold", text_align="center"),
-                        content=ft.Column([
-                            ft.Icon(ft.Icons.PHONE_IN_TALK_ROUNDED, color=C_MARKET, size=60),
-                            ft.Text("Notre équipe vous contacte dans 5 minutes.", text_align="center"),
-                        ], tight=True, spacing=20, horizontal_alignment="center"),
-                        actions=[
-                            ft.ElevatedButton(
-                                "D'ACCORD",
-                                on_click=lambda _: (setattr(dlg, "open", False), render_final_view()),
-                                bgcolor=C_MARKET, color="white"
-                            )
-                        ],
-                        actions_alignment="center",
-                        shape=ft.RoundedRectangleBorder(radius=20),
-                    )
-                    page.overlay.append(dlg)
-                    dlg.open = True
-                    page.update()
+
 
                 # ============ RECHERCHE & AFFICHAGE ============
                 def filter_items(e):
@@ -1705,7 +1528,7 @@ def main(page: ft.Page):
         else:
             no_compte("Connectez-vous pour commander")
     def render_loan_page(page: ft.Page, on_back_callback):
-        SESSION_FILE = "session_utilisateur.txt"
+        SESSION_FILE = "session_utilisateur.json"
 
         def get_user_session():
             """Récupère les infos de l'utilisateur stockées localement"""
@@ -1789,70 +1612,84 @@ def main(page: ft.Page):
                 repas_info_txt.value = f"Équivaut à environ {nb_repas} repas"
                 page.update()
 
+            import urllib.parse
+
+
             def envoyer_demande_pret(e):
                 try:
-                    requests.get('https://www.google.com', timeout=5)
+                    # 1. Feedback visuel immédiat
                     btn_submit.disabled = True
-                    btn_submit.content = ft.ProgressRing(width=20, height=20, color="white")
+                    btn_submit.content = ft.ProgressRing(width=20, height=20, color="white", stroke_width=2)
                     page.update()
 
-                    demande_pret = {
-                        "nom": user_info.get("nom"),
-                        "telephone": user_info.get("tel"),
-                        "ville": user_info.get("ville"),
-                        "quartier": user_info.get("quartier"),
-                        "type": "DEMANDE_PRET",
-                        "montant": f"{int(amt_slider.value):,} FCFA",
-                        "duree": f"{int(duration_slider.value)} mois",
-                        "date": datetime.now().strftime("%d/%m/%Y %H:%M"),
-                        "statut": "En attente étude"
-                    }
+                    # 2. Vérification connexion
+                    try:
+                        requests.get('https://www.google.com', timeout=3)
+                    except:
+                        raise Exception("Pas de connexion")
 
-                    db.child("commandes").push(demande_pret)
+                    # 3. Récupération des données
+                    user_info = get_user_session()  # Ta fonction de session corrigée
+                    nom_client = user_info.get("nom", "Client")
+                    tel_client = user_info.get("tel", "Inconnu")
 
-                    dlg_pret = ft.AlertDialog(
-                        modal=True,
-                        title=ft.Text("Demande de prêt reçue", weight="bold", text_align=ft.TextAlign.CENTER),
-                        content=ft.Column([
-                            ft.Icon(ft.Icons.SUPPORT_AGENT_ROUNDED, color=CP, size=60),
-                            ft.Text(
-                                "Étude de votre dossier",
-                                weight="bold",
-                                size=16,
-                                text_align=ft.TextAlign.CENTER
-                            ),
-                            ft.Text(
-                                "Un conseiller financier va vous appeler d'ici quelques instants pour valider votre demande de prêt alimentaire.",
-                                size=14,
-                                color=CT2,
-                                text_align=ft.TextAlign.CENTER
-                            ),
-                        ], tight=True, spacing=20, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
-                        actions=[
-                            ft.Container(
-                                content=ft.ElevatedButton(
-                                    "J'ATTENDS L'APPEL DU CONSEILLER",
-                                    on_click=lambda _: (setattr(dlg_pret, "open", False), on_back_callback()),
-                                    bgcolor=CP,
-                                    color="white",
-                                    height=50,
-                                ),
-                                alignment=ft.alignment.Alignment(0, 0),
-                                padding=ft.padding.only(bottom=10)
-                            )
-                        ],
-                        actions_alignment=ft.MainAxisAlignment.CENTER,
-                        shape=ft.RoundedRectangleBorder(radius=20),
+                    montant_pret = f"{int(amt_slider.value):,} FCFA"
+                    duree_pret = f"{int(duration_slider.value)} mois"
+                    date_actuelle = datetime.now().strftime("%d/%m/%Y %H:%M")
+
+                    # 4. ENREGISTREMENT SQLITE LOCAL (Historique des prêts)
+                    conn = None
+                    try:
+                        conn = sqlite3.connect("prets.db")
+                        cursor = conn.cursor()
+                        cursor.execute('''
+                            CREATE TABLE IF NOT EXISTS demandes_pret 
+                            (id INTEGER PRIMARY KEY AUTOINCREMENT, nom TEXT, montant TEXT, duree TEXT, date TEXT)
+                        ''')
+                        cursor.execute('''
+                            INSERT INTO demandes_pret (nom, montant, duree, date)
+                            VALUES (?, ?, ?, ?)
+                        ''', (nom_client, montant_pret, duree_pret, date_actuelle))
+                        conn.commit()
+                    except Exception as db_err:
+                        print(f"Erreur SQLite Prêt: {db_err}")
+                    finally:
+                        if conn:
+                            conn.close()  # Important pour éviter le RuntimeWarning
+
+                    # 5. PRÉPARATION DU MESSAGE WHATSAPP
+                    message_whatsapp = (
+                        f"🏦 *NOUVELLE DEMANDE DE PRÊT ALIMENTAIRE*\n\n"
+                        f"👤 *Client:* {nom_client}\n"
+                        f"📞 *Tel:* {tel_client}\n"
+                        f"📍 *Ville:* {user_info.get('ville', 'Non précisée')}\n\n"
+                        f"💰 *Montant souhaité:* {montant_pret}\n"
+                        f"📅 *Durée de remboursement:* {duree_pret}\n"
+                        f"⏰ *Date:* {date_actuelle}\n\n"
+                        f"👉 _Merci de me recontacter pour l'étude de mon dossier._"
                     )
 
-                    page.overlay.append(dlg_pret)
-                    dlg_pret.open = True
+                    # Encodage et lien
+                    msg_encoded = urllib.parse.quote(message_whatsapp)
+                    numero_service_finance = "229XXXXXXXX"  # REMPLACE PAR TON NUMÉRO
+                    whatsapp_url = f"https://wa.me/{numero_service_finance}?text={msg_encoded}"
+
+                    # 6. LANCEMENT ET REDIRECTION
+                    page.launch_url(whatsapp_url)
+
+                    # Retour à l'écran précédent ou accueil
+                    if 'on_back_callback' in locals() or 'on_back_callback' in globals():
+                        on_back_callback()
+
                     page.update()
 
-                except:
+                except Exception as error:
+                    print(f"Erreur Prêt: {error}")
+                    # En cas d'erreur, on réactive le bouton
                     btn_submit.disabled = False
                     btn_submit.content = ft.Text("SOUMETTRE MA DEMANDE", weight="bold")
                     page.update()
+                    if 'no_connexion' in globals(): no_connexion()
 
             amt_slider.on_change = update_simulation
             duration_slider.on_change = update_simulation
@@ -1941,8 +1778,8 @@ def main(page: ft.Page):
                 print("Erreur : Pas de connexion internet.")
 
     def render_order_page(plat_name, base_price, shipping, i, date_livraison):
-        SESSION_FILE = "session_utilisateur.txt"
-        if os.path.exists("session_utilisateur.txt"):
+        SESSION_FILE = "session_utilisateur.json"
+        if os.path.exists(SESSION_FILE):
             try:
                 requests.get('https://www.google.com', timeout=5)
                 page.clean()
@@ -1979,113 +1816,82 @@ def main(page: ft.Page):
                     except:
                         return {"nom": "Client Inconnu", "tel": "Non spécifié"}
 
+                import urllib.parse
+
                 def envoyer_commande_kit(e):
                     try:
-                        # 1. Vérification connexion
+                        # 1. Vérification rapide de la connexion
                         requests.get('https://www.google.com', timeout=5)
 
-                        # 2. Animation visuelle immédiate
+                        # 2. Feedback visuel sur le bouton
                         btn_kit.disabled = True
                         btn_kit.content = ft.ProgressRing(width=20, height=20, color="white")
                         page.update()
 
-                        # 3. Récupération des données utilisateur et de la commande
+                        # 3. Récupération des données utilisateur (via ta fonction de session)
                         user_info = get_user_session()
                         date_actuelle = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-                        # Nettoyage du prix : on garde uniquement les chiffres
+                        nom_client = user_info.get("nom", "Client")
+                        tel_client = user_info.get("tel", "Inconnu")
+                        ville = user_info.get("ville", "Non précisée")
+                        quartier = user_info.get("quartier", "Non précisé")
+
+                        # Nettoyage du prix
                         prix_clean = "".join(filter(str.isdigit, total_txt.value))
                         prix_numerique = int(prix_clean) if prix_clean else 0
 
-                        # 4. STRUCTURE DE LA COMMANDE FINALE (Kit Cuisine)
-                        commande_finale = {
-                            "info": user_info.get("nom", "Client"),
-                            "telephone": user_info.get("tel", "Inconnu"),
-                            "ville": user_info.get("ville", "Non précisée"),
-                            "quartier": user_info.get("quartier", "Non précisé"),
-                            "type": "KIT_CUISINE",
-                            "nom_plat": plat_name,
-                            "panier": panier_kit,  # Liste des ingrédients sélectionnés
-                            "total_paye": total_txt.value,
-                            "date": date_actuelle,
-                            "statut": "En attente"
-                        }
-
-                        # 5. ENVOI FIREBASE
+                        # 4. ENREGISTREMENT SQLITE LOCAL (Historique & Fidélité)
                         try:
-                            db.child("commandes").push(commande_finale)
-                        except Exception as ex:
-                            print(f"Erreur Firebase : {ex}")
-
-                        # 6. ENREGISTREMENT SQLITE LOCAL
-                        try:
-                            date_actuelle = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            # Table des commandes
                             conn = sqlite3.connect("commandes.db")
                             cursor = conn.cursor()
                             cursor.execute('''
-                                    INSERT INTO commandes (date_commande, nom_plat, prix_total, ingredients)
-                                    VALUES (?, ?, ?, ?)
-                                ''', (date_livraison, plat_name, prix_numerique, ", ".join(panier_kit)))
+                                INSERT INTO commandes (date_commande, nom_plat, prix_total, ingredients)
+                                VALUES (?, ?, ?, ?)
+                            ''', (date_actuelle, plat_name, prix_numerique, ", ".join(panier_kit)))
                             conn.commit()
                             conn.close()
-                            # 7 point fidelite
-                            nom = user_info.get("nom", "Client")
-                            conn = sqlite3.connect('fidelite.db')
-                            cursor = conn.cursor()
 
-                            # On vérifie si le client existe, sinon on le crée
-                            cursor.execute('INSERT OR IGNORE INTO clients (nom, points) VALUES (?, 0)', (nom,))
-
-                            # On ajoute +1 point à chaque commande
-                            cursor.execute('UPDATE clients SET points = points + 1 WHERE nom = ?', (nom,))
-
-                            # On récupère le nouveau solde
-                            cursor.execute('SELECT points FROM clients WHERE nom = ?', (nom,))
-                            nouveau_solde = cursor.fetchone()[0]
-
-                            conn.commit()
-                            conn.close()
+                            # Table Fidélité (+1 point)
+                            conn_f = sqlite3.connect('fidelite.db')
+                            cursor_f = conn_f.cursor()
+                            cursor_f.execute('INSERT OR IGNORE INTO clients (nom, points) VALUES (?, 0)', (nom_client,))
+                            cursor_f.execute('UPDATE clients SET points = points + 1 WHERE nom = ?', (nom_client,))
+                            conn_f.commit()
+                            conn_f.close()
                         except Exception as ex:
-                            print(f"Erreur SQLite : {ex}")
+                            print(f"Erreur base de données local : {ex}")
 
-                        # 7. AFFICHAGE DU DIALOGUE DE SUCCÈS
-                        dlg = ft.AlertDialog(
-                            modal=True,
-                            title=ft.Text("Commande bien reçue !", weight="bold", text_align=ft.TextAlign.CENTER),
-                            content=ft.Column([
-                                ft.Icon(ft.Icons.PHONE_IN_TALK_ROUNDED, color=CP, size=60),
-                                ft.Text("Restez à côté de votre téléphone.", weight="bold", size=16,
-                                        text_align=ft.TextAlign.CENTER),
-                                ft.Text(
-                                    "Notre équipe va vous appeler d'ici 5 minutes pour confirmer la livraison de vos ingrédients.",
-                                    size=14, color=CT2, text_align=ft.TextAlign.CENTER
-                                ),
-                            ], tight=True, spacing=20, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
-                            actions=[
-                                ft.Container(
-                                    content=ft.ElevatedButton(
-                                        "D'ACCORD, J'ATTENDS L'APPEL",
-                                        on_click=lambda _: (setattr(dlg, "open", False), render_final_view()),
-                                        bgcolor=CP, color="white", height=50,
-                                    ),
-                                    alignment=ft.Alignment(0, 0),
-                                    padding=ft.padding.only(bottom=10)
-                                )
-                            ],
-                            actions_alignment=ft.MainAxisAlignment.CENTER,
-                            shape=ft.RoundedRectangleBorder(radius=20),
+                        # 5. PRÉPARATION DU MESSAGE WHATSAPP
+                        liste_ingredients = "\n- ".join(panier_kit)
+                        message_whatsapp = (
+                            f"🔔 *NOUVELLE COMMANDE KIT CUISINE*\n\n"
+                            f"👤 *Client:* {nom_client}\n"
+                            f"📞 *Tel:* {tel_client}\n"
+                            f"📍 *Lieu:* {ville}, {quartier}\n\n"
+                            f"🍳 *Plat:* {plat_name}\n"
+                            f"📦 *Ingrédients:* \n- {liste_ingredients}\n\n"
+                            f"💰 *Total:* {total_txt.value}\n"
+                            f"⏰ *Date:* {date_actuelle}"
                         )
 
-                        page.overlay.append(dlg)
-                        dlg.open = True
+                        # Encodage pour l'URL
+                        msg_encoded = urllib.parse.quote(message_whatsapp)
+                        numero_vendeur = "+22871075241"  # REMPLACE PAR TON NUMÉRO (ex: 22990000000)
+                        whatsapp_url = f"https://wa.me/{numero_vendeur}?text={msg_encoded}"
+
+                        # 6. ACTION FINALE : Lancement de WhatsApp et redirection vers l'accueil
+                        page.launch_url(whatsapp_url)
+                        render_final_view()  # Ou render_home() selon ton besoin
                         page.update()
 
                     except requests.RequestException:
-                        # En cas d'erreur, on réactive le bouton
+                        # Erreur connexion : on restaure le bouton
                         btn_kit.disabled = False
                         btn_kit.content = ft.Text("COMMANDER LE KIT", weight="bold")
                         page.update()
-                        no_connexion()
+                        if 'no_connexion' in globals(): no_connexion()
 
                 # Liste des ingrédients avec icônes de "marché"
                 liste_items = ft.Column(spacing=10, scroll=ft.ScrollMode.AUTO)
@@ -2265,7 +2071,7 @@ def main(page: ft.Page):
             return
 
         # --- 3. SI NON EXPIREE : LOGIQUE DE SESSION ET SQLITE ---
-        if os.path.exists("session_utilisateur.txt"):
+        if os.path.exists("session_utilisateur.json"):
             try:
                 # Vérification de la base de données
                 conn = sqlite3.connect("repas_db.sqlite")
@@ -2281,10 +2087,10 @@ def main(page: ft.Page):
 
             except Exception as e:
                 print(f"Erreur lors de la lecture : {e}")
-                go_to_login(page)
+                go_to_signup(page)
         else:
             print("Aucun fichier de session trouvé.")
-            go_to_login(page)
+            go_to_signup(page)
 
     # --- DIALOGUE D'EXPIRATION (Séparé pour la clarté) ---
     def show_expiration_dialog(page, date_fin_str):
@@ -2372,22 +2178,48 @@ def main(page: ft.Page):
     def render_final_view(e=None):
         global i_plat, i_jour
         page.clean()
-        SESSION_FILE = "session_utilisateur.txt"
+        SESSION_FILE = "session_utilisateur.json"
 
         # 1. Récupération réelle de l'utilisateur
+        import json
+        import os
+
         def get_current_user():
-            try:
-                if not os.path.exists(SESSION_FILE):
-                    return {"nom": "Client Inconnu"}
-                with open(SESSION_FILE, "r", encoding="utf-8") as f:
-                    content = f.read()
-                    if "|" in content:  # Format texte
-                        return {"nom": content.split("|")[0]}
-                    else:  # Format JSON
-                        import json
+            file_path = "session_utilisateur.json"
+            default_user = {"nom": "Client Inconnu"}
+
+            if not os.path.exists(file_path):
+                return default_user
+
+            # On essaie d'abord de lire en UTF-8, puis en latin-1 si UTF-8 échoue (erreur 0x8a)
+            for encoding_type in ["utf-8", "latin-1"]:
+                try:
+                    with open(file_path, "r", encoding=encoding_type) as f:
+                        content = f.read().strip()
+
+                    if not content:
+                        return default_user
+
+                    # Cas 1 : Format JSON (recommandé)
+                    if content.startswith("{"):
                         return json.loads(content)
-            except:
-                return {"nom": "Client Inconnu"}
+
+                    # Cas 2 : Ancien format texte avec "|"
+                    elif "|" in content:
+                        parts = content.split("|")
+                        return {"nom": parts[0]}
+
+                    # Cas 3 : Texte brut (juste le nom)
+                    else:
+                        return {"nom": content}
+
+                except (UnicodeDecodeError, json.JSONDecodeError):
+                    continue  # On tente l'encodage suivant si celui-ci plante
+                except Exception as e:
+                    print(f"Erreur lecture session: {e}")
+                    return default_user
+
+            return default_user
 
         user_info = get_current_user()
         nom_utilisateur = user_info.get("nom", "Client Inconnu")
@@ -2531,7 +2363,7 @@ def main(page: ft.Page):
         # 4. Interface de base
         lv = ft.ListView(expand=True, spacing=0, padding=15)
         repas_labels = ["Petit-déjeuner", "Déjeuner", "Dîner", "Goûter", "Extra"]
-        if os.path.exists("session_utilisateur.txt"):
+        if os.path.exists("session_utilisateur.json"):
             mns = "Se deconnecter"
         else:
             mns = "Se connecter"
