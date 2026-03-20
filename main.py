@@ -1328,8 +1328,11 @@ def main(page: ft.Page):
 
                         # 4. Envoi et Redirection
                         msg_encoded = urllib.parse.quote(message_whatsapp)
+                        num="22871075241"
                         # Remplacez par le numéro du commerçant
-                        page.launch_url(f"https://wa.me/+22871075241?text={msg_encoded}")
+                        whatsapp_url = f"whatsapp://send?phone={num}&text={msg_encoded}"
+                        page.launch_url(whatsapp_url)
+                        
                         render_final_view()  # Ou render_home() selon ton besoin
                         page.update()
 
@@ -1653,7 +1656,7 @@ def main(page: ft.Page):
 
                     # Encodage et lien
                     msg_encoded = urllib.parse.quote(message_whatsapp)
-                    numero_service_finance = "229XXXXXXXX"  # REMPLACE PAR TON NUMÉRO
+                    numero_service_finance = "22871075241"  # REMPLACE PAR TON NUMÉRO
                     whatsapp_url = f"https://wa.me/{numero_service_finance}?text={msg_encoded}"
 
                     # 6. LANCEMENT ET REDIRECTION
@@ -1860,12 +1863,12 @@ def main(page: ft.Page):
 
                         # Encodage pour l'URL
                         msg_encoded = urllib.parse.quote(message_whatsapp)
-                        numero_vendeur = "+22871075241"  # REMPLACE PAR TON NUMÉRO (ex: 22990000000)
+                        numero_vendeur = "22871075241"  # REMPLACE PAR TON NUMÉRO (ex: 22990000000)
                         whatsapp_url = f"https://wa.me/{numero_vendeur}?text={msg_encoded}"
 
                         # 6. ACTION FINALE : Lancement de WhatsApp et redirection vers l'accueil
                         page.launch_url(whatsapp_url)
-                        render_final_view()  # Ou render_home() selon ton besoin
+                        render_final_view()
                         page.update()
 
                     except requests.RequestException:
