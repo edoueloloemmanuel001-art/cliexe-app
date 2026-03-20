@@ -7,27 +7,12 @@ import sqlite3
 import logging
 import json
 import requests
-import pyrebase
 import os
 import re
 
 from PIL.ImageOps import expand
 from flet import Alignment
 CONFIG_FILE = ".app_config.json"
-config = {
-    "apiKey": "AIzaSyCLcq-6e7a02DkJJDKGc24z3psQ09Lk9Cw",
-    "authDomain": "cliexe-apk.firebaseapp.com",
-    "projectId": "cliexe-apk",
-    "storageBucket": "cliexe-apk.firebasestorage.app",
-    "messagingSenderId": "444886785936",
-    "appId": "1:444886785936:web:8b0f997d8da3e085161d15",
-    "databaseURL": "https://cliexe-apk-default-rtdb.firebaseio.com"
-}
-
-# Initialisation globale
-firebase = pyrebase.initialize_app(config)
-auth = firebase.auth()
-db = firebase.database()
 CP = "#5D8A66"  # Vert Primaire
 CS = "#4A6D52"  # Vert Secondaire
 CA = "#D1E0D5"  # Vert Accent (pour les puces/chips)
@@ -970,7 +955,7 @@ def main(page: ft.Page):
             try:
                 # 4. Préparation des données
                 # Utilisation de .get() pour localId pour éviter le crash
-                uid = user.get('localId', 'inconnu') if 'user' in globals() or 'user' in locals() else "new_user"
+                
 
                 user_data = {
                     "nom": nom,
@@ -978,7 +963,7 @@ def main(page: ft.Page):
                     "tel": digits_only,
                     "ville": ville_in.value if ville_in.value else "",
                     "quartier": quartier_in.value if quartier_in.value else "",
-                    "localId": uid
+                   
                 }
 
                 # 5. Sauvegarde JSON avec encodage FORCÉ
@@ -1040,7 +1025,7 @@ def main(page: ft.Page):
         def go_to_auth(e):
             dlg.open = False
             page.update()
-            go_to_login()  # Appelle votre fonction de connexion existante
+            go_to_signup()  # Appelle votre fonction de connexion existante
 
         dlg = ft.AlertDialog(
             modal=True,
@@ -2306,7 +2291,7 @@ def main(page: ft.Page):
                     }
 
                     # 3. Envoi à Firebase
-                    db.child("annulations_demandes").push(demande_annulation)
+                    
 
                     # 4. Suppression Locale (SQLite) pour libérer le bouton
                     today = datetime.now().strftime("%Y-%m-%d")  # Format identique
