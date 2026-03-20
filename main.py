@@ -1,4 +1,4 @@
-import time
+
 import sys
 import flet as ft
 import random
@@ -8,12 +8,9 @@ import logging
 import json
 import requests
 import os
-import re
 
-from PIL.ImageOps import expand
-from flet import Alignment
 CONFIG_FILE = ".app_config.json"
-CP = "#5D8A66"  # Vert Primaire
+CP = "#5D8A66"  # Vert Primair
 CS = "#4A6D52"  # Vert Secondaire
 CA = "#D1E0D5"  # Vert Accent (pour les puces/chips)
 CBG = "#F8F9FA"  # Fond de page
@@ -955,7 +952,7 @@ def main(page: ft.Page):
             try:
                 # 4. Préparation des données
                 # Utilisation de .get() pour localId pour éviter le crash
-                
+
 
                 user_data = {
                     "nom": nom,
@@ -963,7 +960,7 @@ def main(page: ft.Page):
                     "tel": digits_only,
                     "ville": ville_in.value if ville_in.value else "",
                     "quartier": quartier_in.value if quartier_in.value else "",
-                   
+
                 }
 
                 # 5. Sauvegarde JSON avec encodage FORCÉ
@@ -2291,7 +2288,7 @@ def main(page: ft.Page):
                     }
 
                     # 3. Envoi à Firebase
-                    
+
 
                     # 4. Suppression Locale (SQLite) pour libérer le bouton
                     today = datetime.now().strftime("%Y-%m-%d")  # Format identique
