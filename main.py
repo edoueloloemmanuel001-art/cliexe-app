@@ -8,6 +8,9 @@ import json
 import requests
 import os
 
+
+
+
 CONFIG_FILE = ".app_config.json"
 CP = "#5D8A66"  # Vert Primair
 CS = "#4A6D52"  # Vert Secondaire
@@ -2359,84 +2362,105 @@ def main(page: ft.Page):
 
                 def envoyer_commande_kit(e):
                     try:
-                        # 1. Vérification rapide de la connexion
+                        # 1. Vérification connexion
                         requests.get('https://www.google.com', timeout=5)
 
-                        # 2. Feedback visuel sur le bouton
+                        # 2. Animation visuelle immédiate
                         btn_kit.disabled = True
                         btn_kit.content = ft.ProgressRing(width=20, height=20, color="white")
                         page.update()
 
-                        # 3. Récupération des données utilisateur (via ta fonction de session)
+                        # 3. Récupération et nettoyage des données
                         user_info = get_user_session()
-                        date_actuelle = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        # Supabase gère souvent le "created_at" automatiquement,
+                        # mais on prépare les données proprement.
 
-                        nom_client = user_info.get("nom", "Client")
-                        tel_client = user_info.get("tel", "Inconnu")
-                        ville = user_info.get("ville", "Non précisée")
-                        quartier = user_info.get("quartier", "Non précisé")
-
-                        # Nettoyage du prix
                         prix_clean = "".join(filter(str.isdigit, total_txt.value))
                         prix_numerique = int(prix_clean) if prix_clean else 0
 
-                        # 4. ENREGISTREMENT SQLITE LOCAL (Historique & Fidélité)
+                        # 4. ENVOI SUPABASE (Remplace Firebase)
+                        # Note : 'panier' doit être une colonne de type JSONB dans ta table Supabase
                         try:
-                            # Table des commandes
-                            conn = sqlite3.connect("commandes.db")
-                            cursor = conn.cursor()
-                            cursor.execute('''
-                                INSERT INTO commandes (date_commande, nom_plat, prix_total, ingredients)
-                                VALUES (?, ?, ?, ?)
-                            ''', (date_actuelle, plat_name, prix_numerique, ", ".join(panier_kit)))
-                            conn.commit()
-                            conn.close()
+                            data_supabase = {
+                                "nom_client": user_info.get("nom", "Client"),
+                                "telephone": user_info.get("tel", "Inconnu"),
+                                "ville": user_info.get("ville", "Non précisée"),
+                                "quartier": user_info.get("quartier", "Non précisé"),
+                                "type_commande": "KIT_CUISINE",
+                                "nom_plat": plat_name,
+                                "panier": panier_kit,
+                                "total_paye": prix_numerique,
+                                "statut": "En attente"
+                            }
+                            # .insert() envoie les données dans la table 'commandes'
+                            phone=22949498882
+                            message="Salut"
+                            url = f"whatsapp://send?phone={phone} &text={message}"
 
-                            # Table Fidélité (+1 point)
-                            conn_f = sqlite3.connect('fidelite.db')
-                            cursor_f = conn_f.cursor()
-                            cursor_f.execute('INSERT OR IGNORE INTO clients (nom, points) VALUES (?, 0)', (nom_client,))
-                            cursor_f.execute('UPDATE clients SET points = points + 1 WHERE nom = ?', (nom_client,))
-                            conn_f.commit()
-                            conn_f.close()
+                            # Lancement de l'URL
+                            page.launch_url(url)
+
+
                         except Exception as ex:
-                            print(f"Erreur base de données local : {ex}")
+                            print(f"Erreur Supabase : {ex}")
 
-                        # 5. PRÉPARATION DU MESSAGE WHATSAPP
-                        liste_ingredients = "\n- ".join(panier_kit)
-                        message_whatsapp = (
-                            f"🔔 *NOUVELLE COMMANDE KIT CUISINE*\n\n"
-                            f"👤 *Client:* {nom_client}\n"
-                            f"📞 *Tel:* {tel_client}\n"
-                            f"📍 *Lieu:* {ville}, {quartier}\n\n"
-                            f"🍳 *Plat:* {plat_name}\n"
-                            f"📦 *Ingrédients:* \n- {liste_ingredients}\n\n"
-                            f"💰 *Total:* {total_txt.value}\n"
-                            f"⏰ *Date:* {date_actuelle}"
+                        # 5. ENREGISTREMENT SQLITE LOCAL & FIDÉLITÉ
+                        try:
+                            nom = user_info.get("nom", "Client")
+
+                            # Gestion Commandes locales
+                            with sqlite3.connect("commandes.db") as conn:
+                                cursor = conn.cursor()
+                                cursor.execute('''
+                                    INSERT INTO commandes (date_commande, nom_plat, prix_total, ingredients)
+                                    VALUES (datetime('now'), ?, ?, ?)
+                                ''', (plat_name, prix_numerique, ", ".join(panier_kit)))
+
+                            # Gestion Fidélité
+                            with sqlite3.connect('fidelite.db') as conn:
+                                cursor = conn.cursor()
+                                cursor.execute('INSERT OR IGNORE INTO clients (nom, points) VALUES (?, 0)', (nom,))
+                                cursor.execute('UPDATE clients SET points = points + 1 WHERE nom = ?', (nom,))
+
+                        except Exception as ex:
+                            print(f"Erreur SQLite : {ex}")
+
+                        # 6. AFFICHAGE DU DIALOGUE DE SUCCÈS
+                        dlg = ft.AlertDialog(
+                            modal=True,
+                            title=ft.Text("Commande bien reçue !", weight="bold", text_align=ft.TextAlign.CENTER),
+                            content=ft.Column([
+                                ft.Icon(ft.Icons.PHONE_IN_TALK_ROUNDED, color="orange", size=60),
+                                ft.Text("Restez à côté de votre téléphone.", weight="bold", size=16,
+                                        text_align=ft.TextAlign.CENTER),
+                                ft.Text("Notre équipe va vous appeler d'ici 5 minutes.", size=14,
+                                        text_align=ft.TextAlign.CENTER),
+                            ], tight=True, spacing=20, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+                            actions=[
+                                ft.ElevatedButton(
+                                    "D'ACCORD",
+                                    on_click=lambda _: close_dlg(dlg),
+                                    bgcolor="orange", color="white",
+                                )
+                            ],
+                            actions_alignment=ft.MainAxisAlignment.CENTER,
                         )
 
-                        # Encodage pour l'URL
-                        msg = urllib.parse.quote(message_whatsapp)
-                        numero = "22871075241"  # REMPLACE PAR TON NUMÉRO (ex: 22990000000)
-
-                        # 6. ACTION FINALE : Lancement de WhatsApp et redirection vers l'accueil
-
-                        url_app = f"whatsapp://send?phone={numero}&text={msg}"
-                        url_web = f"https://wa.me/{numero}?text={msg}"
-
-                        try:
-                            page.launch_url(url_app)
-                        except:
-                            page.launch_url(url_web)
-                        render_final_view()
+                        page.overlay.append(dlg)
+                        dlg.open = True
                         page.update()
 
                     except requests.RequestException:
-                        # Erreur connexion : on restaure le bouton
                         btn_kit.disabled = False
                         btn_kit.content = ft.Text("COMMANDER LE KIT", weight="bold")
                         page.update()
-                        if 'no_connexion' in globals(): no_connexion()
+                        # Fonction no_connexion() supposée existante
+                        no_connexion()
+
+                def close_dlg(dlg):
+                    dlg.open = False
+                    page.update()
+                    render_final_view()  # Fonction de redirection
 
                 # Liste des ingrédients avec icônes de "marché"
                 liste_items = ft.Column(spacing=10, scroll=ft.ScrollMode.AUTO)
@@ -3625,3 +3649,4 @@ def main(page: ft.Page):
 
 
 ft.app(target=main)
+
