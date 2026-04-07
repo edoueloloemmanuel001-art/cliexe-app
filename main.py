@@ -2364,42 +2364,42 @@ def main(page: ft.Page):
                 import flet as ft
 
                 def envoyer_commande_kit(e):
-                            try:
-                                # 1. Animation visuelle du bouton
-                                btn_kit.disabled = True
-                                btn_kit.content = ft.ProgressRing(width=20, height=20, color="white")
-                                page.update()
-                        
-                                # 2. Préparation des données
-                                phone = "22949498882"
-                        
-                                # On construit un message propre avec les infos de la commande
-                                message_brut = (
-                                    f"Bonjour, je souhaite commander :\n"
-                                    f"- Plat : {plat_name}\n"
-                                    f"- Panier : {', '.join(panier_kit)}\n"
-                                    f"- Total : {total_txt.value}"
-                                )
-                        
-                                # Crucial : On encode le message pour les URLs
-                                message_encoded = urllib.parse.quote(message_brut)
-                        
-                                # 3. URL CORRIGÉE - Format standard WhatsApp Web
-                                whatsapp_url = f"https://wa.me/{phone}?text={message_encoded}"
-                        
-                                # 4. Lancement
-                                page.launch_url(whatsapp_url)
-                        
-                                # 5. Réinitialisation de l'interface
-                                btn_kit.disabled = False
-                                btn_kit.content = ft.Text("COMMANDER LE KIT", weight="bold")
-                                page.update()
-                        
-                            except Exception as ex:
-                                print(f"Erreur lors de l'ouverture de WhatsApp : {ex}")
-                                btn_kit.disabled = False
-                                btn_kit.content = ft.Text("COMMANDER LE KIT", weight="bold")
-                                page.update()
+                    try:
+                        # 1. Animation visuelle du bouton
+                        btn_kit.disabled = True
+                        btn_kit.content = ft.ProgressRing(width=20, height=20, color="white")
+                        page.update()
+
+                        # 2. Préparation des données
+                        phone = "22949498882"
+
+                        # On construit un message propre avec les infos de la commande
+                        message_brut = (
+                            f"Bonjour, je souhaite commander :\n"
+                            f"- Plat : {plat_name}\n"
+                            f"- Panier : {', '.join(panier_kit)}\n"
+                            f"- Total : {total_txt.value}"
+                        )
+
+                        # Crucial : On encode le message pour les URLs
+                        message_encoded = urllib.parse.quote(message_brut)
+
+                        # 3. URL CORRIGÉE - Format standard WhatsApp Web
+                        whatsapp_url = f"https://wa.me/{phone}?text={message_encoded}"
+
+                        # 4. Lancement
+                        page.launch_url(whatsapp_url)
+
+                        # 5. Réinitialisation de l'interface
+                        btn_kit.disabled = False
+                        btn_kit.content = ft.Text("COMMANDER LE KIT", weight="bold")
+                        page.update()
+
+                    except Exception as ex:
+                        print(f"Erreur lors de l'ouverture de WhatsApp : {ex}")
+                        btn_kit.disabled = False
+                        btn_kit.content = ft.Text("COMMANDER LE KIT", weight="bold")
+                        page.update()
 
                 def close_dlg(dlg):
                     dlg.open = False
