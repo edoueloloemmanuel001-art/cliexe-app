@@ -2360,8 +2360,8 @@ def main(page: ft.Page):
 
                 import urllib.parse
 
-                import urllib.parse
-                import flet as ft
+               
+                
 
                 def envoyer_commande_kit(e):
                     try:
@@ -2382,13 +2382,13 @@ def main(page: ft.Page):
                         )
 
                         # Crucial : On encode le message pour les URLs
-                        message_encoded = urllib.parse.quote(message_brut)
+                        phone = "22890954239"  # Ton numéro sans +
+                        message = "Mon message"
 
-                        # 3. URL CORRIGÉE - Format standard WhatsApp Web
-                        whatsapp_url = f"https://wa.me/{phone}?text={message_encoded}"
+                        # Ce format force Android à chercher l'application WhatsApp directement
+                        intent_url = f"intent://send?phone={phone}&text={message}#Intent;scheme=whatsapp;package=com.whatsapp;end"
 
-                        # 4. Lancement
-                        page.launch_url(whatsapp_url)
+                        page.launch_url(intent_url)
 
                         # 5. Réinitialisation de l'interface
                         btn_kit.disabled = False
