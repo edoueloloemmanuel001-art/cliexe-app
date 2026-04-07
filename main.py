@@ -2056,399 +2056,451 @@ def main(page: ft.Page):
         page.overlay.append(dlg_edit)
         dlg_edit.open = True
         page.update()
+
+
+
+    # --- CONFIGURATION DES CHEMINS (Crucial pour Android) ---
+    # On définit le dossier de stockage de l'application
+    DB_PATH = os.getcwd()
+
     def render_final_view(e=None):
-        global i_plat, i_jour
-
-        page.clean()
-        SESSION_FILE = "session_utilisateur.txt"
-
-        def user():
-            """Récupère les infos de l'utilisateur stockées localement"""
-            try:
-                with open(SESSION_FILE, "r", encoding="utf-8") as f:
-                    # On charge le dictionnaire stocké par json.dumps
-                    return json.loads(f.read())
-            except:
-                return {"nom": "Client Inconnu", "tel": "Non spécifié"}
-
-        user_info = user()
-        conn = sqlite3.connect('fidelite.db')
-        cursor = conn.cursor()
-        nom = user_info.get("nom", "Client")
-
-        # On vérifie si le client existe, sinon on le crée
-        cursor.execute('INSERT OR IGNORE INTO clients (nom, points) VALUES (?, 0)', (nom,))
-        conn.commit()
-        conn.close()
-        nom_client = user_info.get("nom", "Client")
-        conn = sqlite3.connect('fidelite.db')
-        cursor = conn.cursor()
-
-        # 1. Récupérer les points du client
-        cursor.execute('SELECT points FROM clients WHERE nom = ?', (nom_client,))
-        resultat = cursor.fetchone()
-
-        conn.close()
-
-        points_actuels = resultat[0]
-
-        with open("liste.json", "r") as list:
-            ELEMENTS_VALUES = json.load(list)
-
-        # 1. Préparation des dates
-        today_iso = datetime.now().strftime("%Y-%m-%d")
-        tomorrow_iso = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
-        rows = []
-
-        # 2. Récupération sécurisée du planning
         try:
-            conn = sqlite3.connect("repas_db.sqlite")
-            c = conn.cursor()
-            c.execute("SELECT repas, timestamp FROM planning WHERE timestamp IN (?, ?)", (today_iso, tomorrow_iso))
-            rows = c.fetchall()
-            conn.close()
-        except Exception as e:
-            print(f"Erreur SQL Planning : {e}")
+            global i_plat, i_jour
+            page.clean()
+            SESSION_FILE = "session_utilisateur.json"
 
-        # 3. Action d'annulation avec rafraîchissement
-        def annuler_commande_action(plat_name, date_a_annuler):
-            SESSION_FILE = "session_utilisateur.txt"
+            # 1. Récupération réelle de l'utilisateur
+            import json
+            import os
 
-            def get_user_session():
-                """Récupère les infos de l'utilisateur (Gestion des formats JSON ou Texte)"""
-                try:
-                    if not os.path.exists(SESSION_FILE): return {}
-                    with open(SESSION_FILE, "r", encoding="utf-8") as f:
-                        content = f.read()
-                        if "|" in content:  # Format Texte Pipe
-                            d = content.split("|")
-                            return {"nom": d[0], "tel": d[2], "ville": d[3], "quartier": d[4]}
-                        else:  # Format JSON
+            def get_current_user():
+                file_path = "session_utilisateur.json"
+                default_user = {"nom": "Client Inconnu"}
+
+                if not os.path.exists(file_path):
+                    return default_user
+
+                # On essaie d'abord de lire en UTF-8, puis en latin-1 si UTF-8 échoue (erreur 0x8a)
+                for encoding_type in ["utf-8", "latin-1"]:
+                    try:
+                        with open(file_path, "r", encoding=encoding_type) as f:
+                            content = f.read().strip()
+
+                        if not content:
+                            return default_user
+
+                        # Cas 1 : Format JSON (recommandé)
+                        if content.startswith("{"):
                             return json.loads(content)
-                except:
-                    return {"nom": "Client", "tel": "Inconnu"}
 
-            def valider_annulation(e):
-                try:
-                    # 1. Vérification Connexion Internet
-                    requests.get('https://www.google.com')
+                        # Cas 2 : Ancien format texte avec "|"
+                        elif "|" in content:
+                            parts = content.split("|")
+                            return {"nom": parts[0]}
 
-                    # 2. Préparation des données pour l'Admin
-                    user_info = get_user_session()
-                    date_jour = datetime.now().strftime("%Y-%m-%d")
+                        # Cas 3 : Texte brut (juste le nom)
+                        else:
+                            return {"nom": content}
 
-                    demande_annulation = {
-                        "client": user_info.get("nom"),
-                        "telephone": user_info.get("tel"),
-                        "ville": user_info.get("ville"),
-                        "quartier": user_info.get("quartier"),
-                        "type": "ANNULATION_KIT",
-                        "nom_plat": plat_name,
-                        "date_action": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                        "statut": "Demande Reçue"
-                    }
+                    except (UnicodeDecodeError, json.JSONDecodeError):
+                        continue  # On tente l'encodage suivant si celui-ci plante
+                    except Exception as e:
+                        print(f"Erreur lecture session: {e}")
+                        return default_user
 
-                    # 3. Envoi à Firebase
-                    db.child("annulations_demandes").push(demande_annulation)
+                return default_user
 
-                    # 4. Suppression Locale (SQLite) pour libérer le bouton
-                    today = datetime.now().strftime("%Y-%m-%d")  # Format identique
+            user_info = get_current_user()
+            nom_utilisateur = user_info.get("nom", "Client Inconnu")
 
-                    with sqlite3.connect("commandes.db") as conn:
-                        c = conn.cursor()
-                        c.execute(
-                            "DELETE FROM commandes WHERE nom_plat = ? AND date_commande = ?",
-                            (plat_name, date_a_annuler)
-                        )
-                        conn.commit()
+            # 2. Gestion de la base de données Fidelia
+            import sqlite3
+            DB_PATH =os.getcwd()
+            conn = sqlite3.connect(os.path.join(DB_PATH, "fidelite.db"))
+            cursor = conn.cursor()
 
-
-                    # 5. Fermeture et Feedback
-                    # 5. Fermeture et Feedback
-                    dlg.open = False
-                    page.update()
-
-                    # 6. Feedback
-                    page.snack_bar = ft.SnackBar(
-                        content=ft.Text(f"Annulation confirmée pour {plat_name}"),
-                        bgcolor="red-700"
+            cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS clients (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        nom TEXT UNIQUE,
+                        points INTEGER
                     )
-                    page.snack_bar.open = True
+                ''')
 
-                    # 7. RECHARGER LA VUE (Correction ici)
-                    import time
-                      # Laisse le temps au système de fermer le fichier DB
-                    render_final_view()
-                    page.update()
+            # On insère l'utilisateur actuel s'il n'existe pas
+            cursor.execute('INSERT OR IGNORE INTO clients (nom, points) VALUES (?, 0)', (nom_utilisateur,))
+            conn.commit()
 
-                except (requests.ConnectionError, requests.Timeout):
-                    no_connexion()
-                except Exception as ex:
-                    print(f"Erreur lors de l'annulation : {ex}")
+            # On récupère ses points
+            cursor.execute('SELECT points FROM clients WHERE nom = ?', (nom_utilisateur,))
+            resultat = cursor.fetchone()
+            if resultat and len(resultat) > 0:
+                points_actuels = resultat[0]
+            else:
+                points_actuels = 0
+            conn.close()
 
-            # --- DIALOGUE DE CONFIRMATION ---
-            dlg = ft.AlertDialog(
-                modal=True,
-                title=ft.Text("Annuler la commande ?"),
-                content=ft.Text(
-                    f"Voulez-vous vraiment annuler la livraison des ingrédients pour le plat : {plat_name} ?"),
-                actions=[
-                    ft.TextButton("NON, GARDER", on_click=lambda _: (setattr(dlg, "open", False), page.update())),
-                    ft.ElevatedButton("OUI, ANNULER", bgcolor="red", color="white", on_click=valider_annulation),
-                ],
-                actions_alignment=ft.MainAxisAlignment.END,
-            )
 
-            page.overlay.append(dlg)
-            dlg.open = True
-            page.update()
 
-        # 4. Interface de base
-        lv = ft.ListView(expand=True, spacing=0, padding=15)
-        repas_labels = ["Petit-déjeuner", "Déjeuner", "Dîner", "Goûter", "Extra"]
-        if os.path.exists("session_utilisateur.txt"):
-            mns = "Se deconnecter"
-        else:
-            mns = "Se connecter"
-        options_btn = ft.PopupMenuButton(
-            # Style du menu (Coins arrondis typiques de Material 3)
-            menu_position=ft.PopupMenuPosition.UNDER,
-            shape=ft.RoundedRectangleBorder(radius=15),
-            items=[
-                # SECTION COMPTE / UTILISATEUR
-                ft.PopupMenuItem(
-                    content=ft.Row([
-                        ft.Icon(ft.Icons.PERSON_OUTLINE, size=20, color=ft.Colors.BLUE_700),
-                        ft.Text(mns, weight="w500")
-                    ], spacing=10),
-                    on_click=lambda _: cv()
-                ),
-                ft.PopupMenuItem(content=ft.Divider(height=1, thickness=1)),  # Séparateur
+            with open("liste.json", "r") as f:
+                ELEMENTS_VALUES = json.load(f)
 
-                # SECTION NAVIGATION / SERVICES
-                ft.PopupMenuItem(
-                    content=ft.Row([
-                        ft.Icon(ft.Icons.STOREFRONT_OUTLINED, size=20, color=CP),
-                        ft.Text("Aller au Marché")
-                    ], spacing=10),
-                    on_click=lambda _: render_market(page, render_final_view)
-                ),
-                ft.PopupMenuItem(
-                    content=ft.Row([
-                        ft.Icon(ft.Icons.ACCOUNT_BALANCE_WALLET_OUTLINED, size=20, color=CP),
-                        ft.Text("Prêt Alimentaire")
-                    ], spacing=10),
-                    on_click=lambda _: render_loan_page(page, render_final_view)
-                ),
-                ft.PopupMenuItem(content=ft.Divider(height=1, thickness=1)),
+            # 1. Préparation des dates
+            today_iso = datetime.now().strftime("%Y-%m-%d")
+            tomorrow_iso = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+            rows = []
 
-                # SECTION ACTIONS SYSTÈME
-                ft.PopupMenuItem(
-                    content=ft.Row([
-                        ft.Icon(ft.Icons.RESTART_ALT, size=20, color=ft.Colors.ORANGE_700),
-                        ft.Text("Nouveau Planning", color=ft.Colors.ORANGE_700)
-                    ], spacing=10),
-                    on_click=lambda _: render_home()
-                ),
-            ],
-            # Aspect du bouton déclencheur (Look "Chip" moderne)
-            content=ft.Container(
-                content=ft.Row([
-                    ft.Icon(ft.Icons.SETTINGS_OUTLINED, color=CP, size=18),
-                    ft.Text("Options", color=CP, weight="bold", size=13),
-                    ft.Icon(ft.Icons.ARROW_DROP_DOWN, color=CP, size=20)
-                ], spacing=5, alignment=ft.Alignment(0,0)),
-                padding=ft.padding.symmetric(horizontal=12, vertical=6),
-                bgcolor=ft.Colors.with_opacity(0.1, CP),  # Fond léger de la couleur primaire
-                border_radius=20  # Style "pill" ou "chip"
-            )
-        )
+            # 2. Récupération sécurisée du planning
+            try:
+                conn = sqlite3.connect(os.path.join(DB_PATH,"repas_db.sqlite"))
+                c = conn.cursor()
+                c.execute("SELECT repas, timestamp FROM planning WHERE timestamp IN (?, ?)", (today_iso, tomorrow_iso))
+                rows = c.fetchall()
+                conn.close()
+            except Exception as e:
+                print(f"Erreur SQL Planning : {e}")
 
-        # 5. Message si planning vide
-        if not rows:
-            lv.controls.append(
-                ft.Container(
-                    padding=30,
-                    bgcolor=ft.Colors.GREY_50,
-                    border_radius=20,
-                    content=ft.Column([
-                        ft.Icon(ft.Icons.RESTAURANT_MENU_ROUNDED, size=50, color=CP),
-                        ft.Text("Aucun planning trouvé", size=18, weight="bold"),
-                        ft.Text("Appuyez sur le bouton pour calculer vos repas selon les prix du Togo.",
-                                text_align="center", color=CT2),
-                        ft.Container(height=10),
-                        ft.ElevatedButton(
-                            content=ft.Row([
-                                ft.Icon(ft.Icons.AUTO_AWESOME),
-                                ft.Text("GÉNÉRER UN PLANNING", weight="bold")
-                            ], alignment="center"),
-                            bgcolor=CP,
-                            color="white",
-                            height=50,
-                            width=400,  # Format large Android
-                            on_click=render_home,
-                            style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=12))
+            # 3. Action d'annulation avec rafraîchissement
+            def annuler_commande_action(plat_name, date_a_annuler):
+                SESSION_FILE = "session_utilisateur.txt"
+
+                def get_user_session():
+                    """Récupère les infos de l'utilisateur (Gestion des formats JSON ou Texte)"""
+                    try:
+                        if not os.path.exists(SESSION_FILE): return {}
+                        with open(SESSION_FILE, "r", encoding="utf-8") as f:
+                            content = f.read()
+                            if "|" in content:  # Format Texte Pipe
+                                d = content.split("|")
+                                return {"nom": d[0], "tel": d[2], "ville": d[3], "quartier": d[4]}
+                            else:  # Format JSON
+                                return json.loads(content)
+                    except:
+                        return {"nom": "Client", "tel": "Inconnu"}
+
+                def valider_annulation(e):
+                    try:
+                        # 1. Vérification Connexion Internet
+                        requests.get('https://www.google.com',timeout=5)
+
+                        # 2. Préparation des données pour l'Admin
+                        user_info = get_user_session()
+                        date_jour = datetime.now().strftime("%Y-%m-%d")
+
+                        demande_annulation = {
+                            "client": user_info.get("nom"),
+                            "telephone": user_info.get("tel"),
+                            "ville": user_info.get("ville"),
+                            "quartier": user_info.get("quartier"),
+                            "type": "ANNULATION_KIT",
+                            "nom_plat": plat_name,
+                            "date_action": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                            "statut": "Demande Reçue"
+                        }
+
+                        # 3. Envoi à Firebase
+
+                        # 4. Suppression Locale (SQLite) pour libérer le bouton
+                        today = datetime.now().strftime("%Y-%m-%d")  # Format identique
+
+                        with sqlite3.connect("commandes.db") as conn:
+                            c = conn.cursor()
+                            c.execute(
+                                "DELETE FROM commandes WHERE nom_plat = ? AND date_commande = ?",
+                                (plat_name, date_a_annuler)
+                            )
+                            conn.commit()
+
+                        # 5. Fermeture et Feedback
+                        # 5. Fermeture et Feedback
+                        dlg.open = False
+                        page.update()
+
+                        # 6. Feedback
+                        page.snack_bar = ft.SnackBar(
+                            content=ft.Text(f"Annulation confirmée pour {plat_name}"),
+                            bgcolor="red-700"
                         )
-                    ], horizontal_alignment="center")
+                        page.snack_bar.open = True
+
+                        # 7. RECHARGER LA VUE (Correction ici)
+                        import time
+                        # Laisse le temps au système de fermer le fichier DB
+                        page.clean()
+                        page.update()
+                        render_final_view()
+
+                    except (requests.ConnectionError, requests.Timeout):
+                        no_connexion()
+                    except Exception as ex:
+                        print(f"Erreur lors de l'annulation : {ex}")
+
+                # --- DIALOGUE DE CONFIRMATION ---
+                dlg = ft.AlertDialog(
+                    modal=True,
+                    title=ft.Text("Annuler la commande ?"),
+                    content=ft.Text(
+                        f"Voulez-vous vraiment annuler la livraison des ingrédients pour le plat : {plat_name} ?"),
+                    actions=[
+                        ft.TextButton("NON, GARDER", on_click=lambda _: (setattr(dlg, "open", False), page.update())),
+                        ft.ElevatedButton("OUI, ANNULER", bgcolor="red", color="white", on_click=valider_annulation),
+                    ],
+                    actions_alignment=ft.MainAxisAlignment.END,
+                )
+
+                page.overlay.append(dlg)
+                dlg.open = True
+                page.update()
+
+            # 4. Interface de base
+            lv = ft.ListView(expand=True, spacing=0, padding=15)
+            repas_labels = ["Petit-déjeuner", "Déjeuner", "Dîner", "Goûter", "Extra"]
+            if os.path.exists("session_utilisateur.json"):
+                mns = "Se deconnecter"
+            else:
+                mns = "Se connecter"
+            options_btn = ft.PopupMenuButton(
+                # Style du menu (Coins arrondis typiques de Material 3)
+                menu_position=ft.PopupMenuPosition.UNDER,
+                shape=ft.RoundedRectangleBorder(radius=15),
+                items=[
+                    # SECTION COMPTE / UTILISATEUR
+                    ft.PopupMenuItem(
+                        content=ft.Row([
+                            ft.Icon(ft.Icons.PERSON_OUTLINE, size=20, color=ft.Colors.BLUE_700),
+                            ft.Text(mns, weight="w500")
+                        ], spacing=10),
+                        on_click=lambda _: cv()
+                    ),
+                    ft.PopupMenuItem(content=ft.Divider(height=1, thickness=1)),  # Séparateur
+
+                    # SECTION NAVIGATION / SERVICES
+                    ft.PopupMenuItem(
+                        content=ft.Row([
+                            ft.Icon(ft.Icons.STOREFRONT_OUTLINED, size=20, color=CP),
+                            ft.Text("Aller au Marché")
+                        ], spacing=10),
+                        on_click=lambda _: render_market(page, render_final_view)
+                    ),
+                    ft.PopupMenuItem(
+                        content=ft.Row([
+                            ft.Icon(ft.Icons.ACCOUNT_BALANCE_WALLET_OUTLINED, size=20, color=CP),
+                            ft.Text("Prêt Alimentaire")
+                        ], spacing=10),
+                        on_click=lambda _: render_loan_page(page, render_final_view)
+                    ),
+                    ft.PopupMenuItem(content=ft.Divider(height=1, thickness=1)),
+
+                    # SECTION ACTIONS SYSTÈME
+                    ft.PopupMenuItem(
+                        content=ft.Row([
+                            ft.Icon(ft.Icons.RESTART_ALT, size=20, color=ft.Colors.ORANGE_700),
+                            ft.Text("Nouveau Planning", color=ft.Colors.ORANGE_700)
+                        ], spacing=10),
+                        on_click=lambda _: render_home()
+                    ),
+                ],
+                # Aspect du bouton déclencheur (Look "Chip" moderne)
+                content=ft.Container(
+                    content=ft.Row([
+                        ft.Icon(ft.Icons.SETTINGS_OUTLINED, color=CP, size=18),
+                        ft.Text("Options", color=CP, weight="bold", size=13),
+                        ft.Icon(ft.Icons.ARROW_DROP_DOWN, color=CP, size=20)
+                    ], spacing=5, alignment=ft.Alignment(0, 0)),
+                    padding=ft.padding.symmetric(horizontal=12, vertical=6),
+                    bgcolor=ft.Colors.with_opacity(0.1, CP),  # Fond léger de la couleur primaire
+                    border_radius=20  # Style "pill" ou "chip"
                 )
             )
 
-        # 6. Boucle de génération des cartes
-        for iso, label, shipping in [(today_iso, "Aujourd'hui", DELIVERY_TODAY),
-                                     (tomorrow_iso, "Demain", DELIVERY_TOMORROW)]:
-            day_data = [r for r in rows if r[1] == iso]
-            if day_data:
-                lv.controls.append(create_section_header(label, datetime.now().strftime(
-                    "%d %b") if label == "Aujourd'hui" else (datetime.now() + timedelta(1)).strftime("%d %b")))
-
-                for entry in day_data:
-                    plats_list = entry[0].split(", ")
-                    for i, plat_name in enumerate(plats_list):
-                        prix_plat = ELEMENTS_VALUES.get(plat_name, 0)
-
-                        # VERIFICATION DU VERROUILLAGE
-                        deja_pris = est_commande(plat_name, iso)
-
-                        lv.controls.append(
-                            ft.Container(
-                                padding=20,
-                                bgcolor=CC,
-                                border_radius=20,  # Coins plus arrondis pour le look M3
-                                margin=ft.margin.only(bottom=15),
-                                shadow=ft.BoxShadow(blur_radius=10, color=ft.Colors.with_opacity(0.05, "black")),
-                                # Ombre légère
-                                content=ft.Column([
-                                    # HEADER : Badge Repas + Bouton Modifier
-                                    ft.Row([
-                                        ft.Container(
-                                            ft.Text(repas_labels[i].upper() if i < 5 else "EXTRA",
-                                                    size=10, color="white", weight="bold"),
-                                            bgcolor=CP,
-                                            padding=ft.padding.symmetric(horizontal=10, vertical=4),
-                                            border_radius=8
-                                        ),
-                                        ft.IconButton(
-                                            icon=ft.Icons.EDIT_OUTLINED,  # Style plus léger
-                                            icon_color=ft.Colors.GREY_600,
-                                            icon_size=20,
-                                            tooltip="Modifier ce plat",
-                                            on_click=lambda _, p=plat_name, d=iso, idx=i, raw=entry[0]:
-                                            modifier_plat_action(p, d, idx, raw)
-                                        ),
-                                    ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
-
-                                    # CORPS : Nom et Détails
-                                    ft.Column([
-                                        ft.Text(plat_name, size=18, weight="bold", color=CT1),
-                                        ft.Row([
-                                            ft.Text(f"{prix_plat} FCFA", size=16, weight="w500", color=CP),
-                                            ft.Text("•", color=CT2),
-                                            ft.Text(f"Livraison {shipping} FCFA", size=14, color=CT2),
-                                        ], spacing=8),
-                                    ], spacing=4),
-
-                                    ft.Divider(height=20, color="transparent"),
-
-                                    # ACTIONS : Commander / Annuler
-                                    ft.Row([
-                                        # BOUTON COMMANDER (Primaire)
-                                        ft.ElevatedButton(
-                                            content=ft.Row([
-                                                ft.Icon(ft.Icons.CHECK_CIRCLE if deja_pris else ft.Icons.SHOPPING_CART,
-                                                        size=18),
-                                                ft.Text("Commandé" if deja_pris else "Commander", weight="bold")
-                                            ], alignment=ft.MainAxisAlignment.CENTER),
-                                            style=ft.ButtonStyle(
-                                                color="white",
-                                                bgcolor=ft.Colors.GREY_400 if deja_pris else CP,
-                                                shape=ft.RoundedRectangleBorder(radius=12),
-                                            ),
-                                            expand=True,
-                                            disabled=deja_pris,  # On peut désactiver si déjà pris
-                                            on_click=lambda _, p=plat_name, pr=prix_plat, s=shipping, idx=i, d=iso:
-                                            render_order_page(p, pr, s, idx, d)
-                                        ),
-
-                                        # BOUTON ANNULER (Secondaire / Outlined)
-                                        ft.OutlinedButton(
-                                            content=ft.Row([
-                                                ft.Icon(ft.Icons.CLOSE, size=18,
-                                                        color="red" if deja_pris else ft.Colors.GREY_400),
-                                                ft.Text("Annuler", color="red" if deja_pris else ft.Colors.GREY_400)
-                                            ], alignment=ft.MainAxisAlignment.CENTER),
-                                            style=ft.ButtonStyle(
-                                                shape=ft.RoundedRectangleBorder(radius=12),
-                                                side={ft.ControlState.DEFAULT: ft.BorderSide(1,
-                                                                                             "red" if deja_pris else ft.Colors.GREY_200)},
-                                            ),
-                                            visible=deja_pris,  # On ne l'affiche que si une commande existe
-                                            expand=True,
-                                            on_click=lambda _, p=plat_name, d=iso: annuler_commande_action(p, d)
-                                        )
-                                    ], spacing=12)
-                                ], spacing=0)
-                            )
-                        )
-
-        # 7. Affichage Final
-        # --- Logique de progression ---
-
-
-        # --- UI ---
-        # Header avec correction du bug ImageFit
-        def get_loyalty_data(points):
-            if points <= 2:
-                return "NIVEAU BRONZE", "❤", ft.Colors.BROWN_400
-            elif points <= 5:
-                return "NIVEAU ARGENT", "💕", ft.Colors.BLUE_GREY_400
-            elif points <= 10:
-                return "NIVEAU OR", "🥇", ft.Colors.AMBER_600
-            elif points <= 20:
-                return "NIVEAU PLATINE", "💎", ft.Colors.CYAN_400
-            else:
-                return "NIVEAU LÉGENDE", "👑", ft.Colors.AMBER_700
-
-        rank_name, emoji, rank_color = get_loyalty_data(points_actuels)
-
-        # 1. HEADER
-        header = ft.Container(
-            padding=ft.padding.only(top=50, left=20, right=20, bottom=10),
-            content=ft.Row([
-                ft.Image(src="logo.png", height=40, fit="contain"),
-                options_btn
-            ], alignment="spaceBetween"),  # Utilisation de string pour éviter les erreurs
-        )
-
-        # 2. BADGE DE FIDÉLITÉ
-        fidelia_badge = ft.Container(
-            margin=ft.margin.symmetric(horizontal=20, vertical=10),
-            padding=15,
-            border_radius=20,
-            bgcolor="white",
-            shadow=ft.BoxShadow(blur_radius=15, color=ft.Colors.with_opacity(0.05, "black")),
-            content=ft.Row([
-                ft.Row([
-                    # Icône de gauche
+            # 5. Message si planning vide
+            if not rows:
+                lv.controls.append(
                     ft.Container(
-                        content=ft.Text(emoji, size=22),
-                        bgcolor=ft.Colors.with_opacity(0.1, rank_color),
-                        width=45, height=45,
-                        border_radius=22,
-                        alignment=ft.Alignment(0, 0)  # Correction ici : (0,0) est le centre exact
-                    ),
-                    # Texte
-                    ft.Column([
-                        ft.Text(f"{points_actuels} Points Fidelia", size=16, weight="bold", color="black"),
-                        ft.Text(rank_name, size=11, weight="w500", color=rank_color),
-                    ], spacing=20)
-                ], spacing=15),
-                ft.Icon(ft.Icons.CHEVRON_RIGHT, color=ft.Colors.GREY_400)
-            ], alignment="spaceBetween")
-        )
+                        padding=30,
+                        bgcolor=ft.Colors.GREY_50,
+                        border_radius=20,
+                        content=ft.Column([
+                            ft.Icon(ft.Icons.RESTAURANT_MENU_ROUNDED, size=50, color=CP),
+                            ft.Text("Aucun planning trouvé", size=18, weight="bold"),
+                            ft.Text("Appuyez sur le bouton pour calculer vos repas selon les prix du Togo.",
+                                    text_align="center", color=CT2),
+                            ft.Container(height=10),
+                            ft.ElevatedButton(
+                                content=ft.Row([
+                                    ft.Icon(ft.Icons.AUTO_AWESOME),
+                                    ft.Text("GÉNÉRER UN PLANNING", weight="bold")
+                                ], alignment="center"),
+                                bgcolor=CP,
+                                color="white",
+                                height=50,
+                                width=400,  # Format large Android
+                                on_click=render_home,
+                                style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=12))
+                            )
+                        ], horizontal_alignment="center")
+                    )
+                )
 
-        page.add(header, fidelia_badge, lv)
-        page.update()
+            # 6. Boucle de génération des cartes
+            for iso, label, shipping in [(today_iso, "Aujourd'hui", DELIVERY_TODAY),
+                                         (tomorrow_iso, "Demain", DELIVERY_TOMORROW)]:
+                day_data = [r for r in rows if r[1] == iso]
+                if day_data:
+                    lv.controls.append(create_section_header(label, datetime.now().strftime(
+                        "%d %b") if label == "Aujourd'hui" else (datetime.now() + timedelta(1)).strftime("%d %b")))
 
+                    for entry in day_data:
+                        plats_list = entry[0].split(", ")
+                        for i, plat_name in enumerate(plats_list):
+                            prix_plat = ELEMENTS_VALUES.get(plat_name, 0)
+
+                            # VERIFICATION DU VERROUILLAGE
+                            deja_pris = est_commande(plat_name, iso)
+
+                            lv.controls.append(
+                                ft.Container(
+                                    padding=20,
+                                    bgcolor=CC,
+                                    border_radius=20,  # Coins plus arrondis pour le look M3
+                                    margin=ft.margin.only(bottom=15),
+                                    shadow=ft.BoxShadow(blur_radius=10, color=ft.Colors.with_opacity(0.05, "black")),
+                                    # Ombre légère
+                                    content=ft.Column([
+                                        # HEADER : Badge Repas + Bouton Modifier
+                                        ft.Row([
+                                            ft.Container(
+                                                ft.Text(repas_labels[i].upper() if i < 5 else "EXTRA",
+                                                        size=10, color="white", weight="bold"),
+                                                bgcolor=CP,
+                                                padding=ft.padding.symmetric(horizontal=10, vertical=4),
+                                                border_radius=8
+                                            ),
+                                            ft.IconButton(
+                                                icon=ft.Icons.EDIT_OUTLINED,  # Style plus léger
+                                                icon_color=ft.Colors.GREY_600,
+                                                icon_size=20,
+                                                tooltip="Modifier ce plat",
+                                                on_click=lambda _, p=plat_name, d=iso, idx=i, raw=entry[0]:
+                                                modifier_plat_action(p, d, idx, raw)
+                                            ),
+                                        ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+
+                                        # CORPS : Nom et Détails
+                                        ft.Column([
+                                            ft.Text(plat_name, size=18, weight="bold", color=CT1),
+                                            ft.Row([
+                                                ft.Text(f"{prix_plat} FCFA", size=16, weight="w500", color=CP),
+                                                ft.Text("•", color=CT2),
+                                                ft.Text(f"Livraison {shipping} FCFA", size=14, color=CT2),
+                                            ], spacing=8),
+                                        ], spacing=4),
+
+                                        ft.Divider(height=20, color="transparent"),
+
+                                        # ACTIONS : Commander / Annuler
+                                        ft.Row([
+                                            # BOUTON COMMANDER (Primaire)
+                                            ft.ElevatedButton(
+                                                content=ft.Row([
+                                                    ft.Icon(ft.Icons.CHECK_CIRCLE if deja_pris else ft.Icons.SHOPPING_CART,
+                                                            size=18),
+                                                    ft.Text("Commandé" if deja_pris else "Commander", weight="bold")
+                                                ], alignment=ft.MainAxisAlignment.CENTER),
+                                                style=ft.ButtonStyle(
+                                                    color="white",
+                                                    bgcolor=ft.Colors.GREY_400 if deja_pris else CP,
+                                                    shape=ft.RoundedRectangleBorder(radius=12),
+                                                ),
+                                                expand=True,
+                                                disabled=deja_pris,  # On peut désactiver si déjà pris
+                                                on_click=lambda _, p=plat_name, pr=prix_plat, s=shipping, idx=i, d=iso:
+                                                render_order_page(p, pr, s, idx, d)
+                                            ),
+
+                                            # BOUTON ANNULER (Secondaire / Outlined)
+                                            ft.OutlinedButton(
+                                                content=ft.Row([
+                                                    ft.Icon(ft.Icons.CLOSE, size=18,
+                                                            color="red" if deja_pris else ft.Colors.GREY_400),
+                                                    ft.Text("Annuler", color="red" if deja_pris else ft.Colors.GREY_400)
+                                                ], alignment=ft.MainAxisAlignment.CENTER),
+                                                style=ft.ButtonStyle(
+                                                    shape=ft.RoundedRectangleBorder(radius=12),
+                                                    side={ft.ControlState.DEFAULT: ft.BorderSide(1,
+                                                                                                 "red" if deja_pris else ft.Colors.GREY_200)},
+                                                ),
+                                                visible=deja_pris,  # On ne l'affiche que si une commande existe
+                                                expand=True,
+                                                on_click=lambda _, p=plat_name, d=iso: annuler_commande_action(p, d)
+                                            )
+                                        ], spacing=12)
+                                    ], spacing=0)
+                                )
+                            )
+
+            # 7. Affichage Final
+            # --- Logique de progression ---
+
+            # --- UI ---
+            # Header avec correction du bug ImageFit
+            def get_loyalty_data(points):
+                if points <= 2:
+                    return "NIVEAU BRONZE", "❤", ft.Colors.BROWN_400
+                elif points <= 5:
+                    return "NIVEAU ARGENT", "💕", ft.Colors.BLUE_GREY_400
+                elif points <= 10:
+                    return "NIVEAU OR", "🥇", ft.Colors.AMBER_600
+                elif points <= 20:
+                    return "NIVEAU PLATINE", "💎", ft.Colors.CYAN_400
+                else:
+                    return "NIVEAU LÉGENDE", "👑", ft.Colors.AMBER_700
+
+            rank_name, emoji, rank_color = get_loyalty_data(points_actuels)
+
+            # 1. HEADER
+            header = ft.Container(
+                padding=ft.padding.only(top=50, left=20, right=20, bottom=10),
+                content=ft.Row([
+                    ft.Image(src="logo.png", height=40, fit="contain"),
+                    options_btn
+                ],alignment=ft.MainAxisAlignment.SPACE_BETWEEN),  # Utilisation de string pour éviter les erreurs
+            )
+
+            # 2. BADGE DE FIDÉLITÉ
+            fidelia_badge = ft.Container(
+                margin=ft.margin.symmetric(horizontal=20, vertical=10),
+                padding=15,
+                border_radius=20,
+                bgcolor="white",
+                shadow=ft.BoxShadow(blur_radius=15, color=ft.Colors.with_opacity(0.05, "black")),
+                content=ft.Row([
+                    ft.Row([
+                        # Icône de gauche
+                        ft.Container(
+                            content=ft.Text(emoji, size=22),
+                            bgcolor=ft.Colors.with_opacity(0.1, rank_color),
+                            width=45, height=45,
+                            border_radius=22,
+                            alignment=ft.Alignment(0, 0)  # Correction ici : (0,0) est le centre exact
+                        ),
+                        # Texte
+                        ft.Column([
+                            ft.Text(f"{points_actuels} Points Fidelia", size=16, weight="bold", color="black"),
+                            ft.Text(rank_name, size=11, weight="w500", color=rank_color),
+                        ], spacing=20)
+                    ], spacing=15),
+                    ft.Icon(ft.Icons.CHEVRON_RIGHT, color=ft.Colors.GREY_400)
+                ],alignment=ft.MainAxisAlignment.SPACE_BETWEEN )
+            )
+
+            page.add(header, fidelia_badge, lv)
+            page.update()
+        except Exception as e:
+            import traceback
+            print("ERREUR FATALE :", e)
+            print(traceback.format_exc())
+            page.add(ft.Text("l´app a planter"))
     def open_edit_modal(idx):  # L'argument est 'idx'
         day_data = state["planning_genere"][idx]
 
