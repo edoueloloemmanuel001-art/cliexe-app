@@ -2360,43 +2360,45 @@ def main(page: ft.Page):
 
                 import urllib.parse
 
-               
-                
+                import urllib.parse
 
                 def envoyer_commande_kit(e):
                     try:
-                        # 1. Animation visuelle du bouton
+                        # 1. Animation visuelle
                         btn_kit.disabled = True
-                        btn_kit.content = ft.ProgressRing(width=20, height=20, color="white")
+                        btn_kit.content = ft.ProgressRing(width=20, height=20, color="white", stroke_width=2)
                         page.update()
 
-                        # 2. Préparation des données
-                        phone = "22949498882"
+                        # 2. Préparation des données (On utilise tes vraies variables)
+                        phone = "22890954239"  # Assure-toi que c'est le bon numéro sans le +
 
-                        # On construit un message propre avec les infos de la commande
                         message_brut = (
                             f"Bonjour, je souhaite commander :\n"
-                            f"- Plat : {plat_name}\n"
-                            f"- Panier : {', '.join(panier_kit)}\n"
-                            f"- Total : {total_txt.value}"
+                            f"🍴 Plat : {plat_name}\n"
+                            f"🛒 Panier : {', '.join(panier_kit)}\n"
+                            f"💰 Total : {total_txt.value}"
                         )
 
-                        # Crucial : On encode le message pour les URLs
-                        phone = "22890954239"  # Ton numéro sans +
-                        message = "Mon message"
+                        # 3. ENCODAGE (Indispensable pour les espaces et emojis)
+                        message_encoded = urllib.parse.quote(message_brut)
 
-                        # Ce format force Android à chercher l'application WhatsApp directement
-                        intent_url = f"intent://send?phone={phone}&text={message}#Intent;scheme=whatsapp;package=com.whatsapp;end"
+                        # 4. LE LIEN DIRECT (Format le plus compatible)
+                        # On essaie d'abord le protocole direct de l'app
+                        whatsapp_url = f"whatsapp://send?phone={phone}&text={message_encoded}"
 
-                        page.launch_url(intent_url)
-
-                        # 5. Réinitialisation de l'interface
-                        btn_kit.disabled = False
-                        btn_kit.content = ft.Text("COMMANDER LE KIT", weight="bold")
-                        page.update()
+                        # 5. LANCEMENT
+                        page.launch_url(whatsapp_url)
 
                     except Exception as ex:
-                        print(f"Erreur lors de l'ouverture de WhatsApp : {ex}")
+                        print(f"Erreur : {ex}")
+                        # Si whatsapp:// échoue, on tente le lien universel en secours
+                        try:
+                            page.launch_url(f"https://wa.me/{phone}?text={message_encoded}")
+                        except:
+                            pass
+
+                    finally:
+                        # 6. Réinitialisation (toujours dans un finally pour ne pas rester bloqué)
                         btn_kit.disabled = False
                         btn_kit.content = ft.Text("COMMANDER LE KIT", weight="bold")
                         page.update()
