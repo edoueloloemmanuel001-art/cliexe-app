@@ -2398,7 +2398,7 @@ def main(page: ft.Page):
         # Header avec correction du bug ImageFit
         def get_loyalty_data(points):
             if points <= 2:
-                return "NIVEAU BRONZE", "❤", ft.colors.BROWN_400
+                return "NIVEAU BRONZE", "❤", ft.Colors.BROWN_400
             elif points <= 5:
                 return "NIVEAU ARGENT", "💕", ft.Colors.BLUE_GREY_400
             elif points <= 10:
