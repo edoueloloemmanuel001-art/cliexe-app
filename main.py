@@ -1,3 +1,4 @@
+import time
 import sys
 import flet as ft
 import random
@@ -6,13 +7,25 @@ import sqlite3
 import logging
 import json
 import requests
+import pyrebase
 import os
 
-
-
-
 CONFIG_FILE = ".app_config.json"
-CP = "#5D8A66"  # Vert Primair
+config = {
+    "apiKey": "AIzaSyCLcq-6e7a02DkJJDKGc24z3psQ09Lk9Cw",
+    "authDomain": "cliexe-apk.firebaseapp.com",
+    "projectId": "cliexe-apk",
+    "storageBucket": "cliexe-apk.firebasestorage.app",
+    "messagingSenderId": "444886785936",
+    "appId": "1:444886785936:web:8b0f997d8da3e085161d15",
+    "databaseURL": "https://cliexe-apk-default-rtdb.firebaseio.com"
+}
+
+# Initialisation globale
+firebase = pyrebase.initialize_app(config)
+auth = firebase.auth()
+db = firebase.database()
+CP = "#5D8A66"  # Vert Primaire
 CS = "#4A6D52"  # Vert Secondaire
 CA = "#D1E0D5"  # Vert Accent (pour les puces/chips)
 CBG = "#F8F9FA"  # Fond de page
@@ -27,125 +40,15 @@ DELIVERY_TOMORROW = 300
 JOURS_FR = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
 MOIS_FR = ["Janv.", "Févr.", "Mars", "Avril", "Mai", "Juin", "Juil.", "Août", "Sept.", "Oct.", "Nov.", "Déc."]
 import itertools
-
-lisa1 = {}
-bases2a1 = {"TEKON(IGNAME BOULLIE)": ["igname", "sel"],
-            "ABLO": ["farine de mais", "farine de riz", "sucre", "sel", "levure boulanger"],
-            "DJINKOUME": ["farine mais"], "COUSCOUS": ["couscou", "huil", "sel"], "KOLIKO": ["igname", "huil", "sel"],
-            "TIMBANI": ["haricos", "sel"], "RIZ": ["riz", "sel"], "AMANDA(ALLOCO)": ["bananes plantain", "huil", "sel"],
-            "AYIMOLOU": ["haricot", "riz", "potasse"], "SPAGHETTI": ["spaghetti", "sel"]}
-proteines2a1 = {"RIEN ": [""], "AKPALAN(POISSON FUME)": ["AKPALAN(POISSON FUME)"],
-                "DEUEVI(PETIT POISSON)": ["DEUEVI(PETIT POISSON)"],
-                "APKALAN KANAMI(POISSON FRIT)": ["APKALAN KANAMI(POISSON FRIT)"], "POULET": ["VIANDE DE POULET"],
-                "BOEUF": ["VIANDE DE BOEUF"], "MOUTON": ["VIANDE DE MOUTON"],
-                "AKPAME(PEAU DE BOEUF)": ["AKPAME(PEAU DE BOEUF)"], "AGLAN(CRABE)": ["AGLAN(CRABE)"],
-                "CREVETTE": ["CREVETTE"]}
-sauces2a1 = {
-    "TOMATE": ["TOMATE FRAIS", "TOMATE CONCENTRE", "HUIL VEGETAL", "OIGNON", "CUBE", "SEL", "AIL", "PIMENT FRAIS",
-               "PIMENT EN POUDRE", "POTASE", ], }
-basesa1 = {"FOUFOU IGNAME": ["igname", "sel"], "FOUFOU PLANTAIN": ["bananas plantains", "sel"],
-           "AKOUME(PATE MAIS)": ["Farine de mais"],
-           "EMAKUME(PATE MAIS FERMENTE)": ["Farine de mais", "pate de mais fermenter"], "Riz": ["riz", "sel"]}
-proteinesa1 = {"RIEN ": [""], "AKPALAN(POISSON FUME)": ["AKPALAN(POISSON FUME)"],
-               "DEUEVI(PETIT POISSON)": ["DEUEVI(PETIT POISSON)"],
-               "APKALAN KANAMI(POISSON FRIT)": ["APKALAN KANAMI(POISSON FRIT)"], "POULET": ["VIANDE DE POULET"],
-               "BOEUF": ["VIANDE DE BOEUF"], "MOUTON": ["VIANDE DE MOUTON"],
-               "AKPAME(PEAU DE BOEUF)": ["AKPAME(PEAU DE BOEUF)"], "AGLAN(CRABE)": ["AGLAN(CRABE)"],
-               "CREVETTE": ["CREVETTE"]}
-saucesa1 = {
-    "GBOMA": ["oignon", "gingembre", " ail", "Tomate frais", "piment frais", "tomate concentre", "huil rouge", "sel",
-              "feuille de gboma", "cube"],
-    "TOMATE": ["TOMATE FRAIS", "TOMATE CONCENTRE", "HUIL VEGETAL", "OIGNON", "CUBE", "SEL", "AIL", "PIMENT FRAIS",
-               "PIMENT EN POUDRE", "POTASE", ],
-    "GOUSSI": ["sel", "oignon", "Graine de courge", "tomate frais", "piment frais", "Tomate concentre", "cube"],
-    "ADEME": ["feuilles ademe", "gingembre", "oignon", "piment frais", "huile rouge", "sel", "potasse",
-              "poisson fermente", "cube"],
-    "FETRI(GOMBO)": ["gombo", "tomate frais", "oignon", "piment frais", "sel", "gingembre", "cube"],
-    "KODORO": ["oignon", "gingembre", "ail", "piment frais", "sel", " Afiti", "Feuille de baobab", "cube"],
-    "GNATOU": ["Feuille de gnatou", "Huil rouge", "pate d´arachide", "piment frais", "oignon", "cube", "sel", "afiti",
-               "ail"],
-    "ARACHIDE": ["oignon", "ail", "gingembre", "pate d´arachide", "tomate frais", "piment frais", "sel",
-                 "tomate concentre", "cube"],
-    "CHOU": ["TOMATE FRAIS", "TOMATE CONCENTRE", "HUIL VEGETAL", "OIGNON", "CUBE", "SEL", "AIL", "PIMENT FRAIS",
-             "PIMENT EN POUDRE", "POTASE", "choux"],
-    "FETRI POUPOU(GONBO SEC)": ["gombo sec", "tomate frais", "oignon", "piment frais", "piment en poudre", "sel",
-                                "gingembre", "cube"],
-    "DEKOU(GRAINE)": ["gingembre", "oignon", "ail", "Sel", "tomate frais", "oignon", "piment frais", "Noi de palme",
-                      "cube"], "EBESSESSI": ["piment frais", "oignon", "tomate", "sel", "gingembre", "cube"], }
-dica1 = {
-    "DEGUE(ARACHIDE)": [
-        "lait",
-        "couscous",
-        "sucre",
-        "glace",
-        "arachide"
-    ], "DEGUE SIMPLE": [
-        "lait",
-        "couscous",
-        "sucre",
-        "glace",
-        "arachide"
-    ],
-    "TAPIOCA ZOGBON": [
-        "tapioca",
-        "sel",
-        "sucre",
-        "lait en poudre"
-    ],
-    "ATTIEKE POISSON": [
-        "poisson frais",
-        "attieke",
-        "oignon",
-        "ail",
-        "piment frai",
-        "huile d´arachide",
-        "sel",
-        "cube"
-
-    ],
-    "SPAGHETTI BLANC": ["spagheti", "sel", "piment frais", "huil", "cube", ],
-    "SALADE": [
-        "Laitue",
-        "Tomate",
-        "oignon",
-        "Beterave",
-        "Carotte",
-        "Concombre",
-        "Mayonnaise",
-        "cube",
-        "sardine",
-        "oeuf",
-        "spagheti",
-        "huil",
-        "vinaigre",
-        "pain"
-    ],
-    "HARICO HUIL ROUGE ": [
-        "harico",
-        "sel",
-        "potasse",
-        "oignon",
-        "ail",
-        "huil rouge",
-        "Gari"
-    ],
-    "HARICO HUIL ARACHIDE 1": [
-        "harico",
-        "sel",
-        "potasse",
-        "oignon",
-        "ail",
-        "huil d´arachide",
-        "Gari"
-    ],
-    "HARICO HUIL ARACHIDE 2": [
-        "harico",
-        "sel",
-        "potasse",
-        "oignon",
-        "huil d´arachide",
-        "Gari"
-    ]
+lisa1={}
+bases2a1 ={"TEKON(IGNAME BOULLIE)":["igname","sel"],"ABLO":["farine de mais","farine de riz","sucre","sel","levure boulanger"],"DJINKOUME":["farine mais"],"COUSCOUS":["couscou","huil","sel"],"KOLIKO":["igname","huil","sel"],"TIMBANI":["haricos","sel"],"RIZ":["riz","sel"],"AMANDA(ALLOCO)":["bananes plantain","huil","sel"],"AYIMOLOU":["haricot","riz","potasse"],"SPAGHETTI":["spaghetti","sel"]}
+proteines2a1={"RIEN ":[""],"AKPALAN(POISSON FUME)":["AKPALAN(POISSON FUME)"],"DEUEVI(PETIT POISSON)":["DEUEVI(PETIT POISSON)"],"APKALAN KANAMI(POISSON FRIT)":["APKALAN KANAMI(POISSON FRIT)"],"POULET":["VIANDE DE POULET"],"BOEUF":["VIANDE DE BOEUF"],"MOUTON":["VIANDE DE MOUTON"],"AKPAME(PEAU DE BOEUF)":["AKPAME(PEAU DE BOEUF)"],"AGLAN(CRABE)":["AGLAN(CRABE)"],"CREVETTE":["CREVETTE"]}
+sauces2a1={"TOMATE":["TOMATE FRAIS","TOMATE CONCENTRE","HUIL VEGETAL","OIGNON","CUBE","SEL","AIL","PIMENT FRAIS","PIMENT EN POUDRE","POTASE",],}
+basesa1 ={"FOUFOU IGNAME":["igname","sel"],"FOUFOU PLANTAIN":["bananas plantains","sel"],"AKOUME(PATE MAIS)":["Farine de mais"],"EMAKUME(PATE MAIS FERMENTE)":["Farine de mais","pate de mais fermenter"],"Riz":["riz","sel"]}
+proteinesa1={"RIEN ":[""],"AKPALAN(POISSON FUME)":["AKPALAN(POISSON FUME)"],"DEUEVI(PETIT POISSON)":["DEUEVI(PETIT POISSON)"],"APKALAN KANAMI(POISSON FRIT)":["APKALAN KANAMI(POISSON FRIT)"],"POULET":["VIANDE DE POULET"],"BOEUF":["VIANDE DE BOEUF"],"MOUTON":["VIANDE DE MOUTON"],"AKPAME(PEAU DE BOEUF)":["AKPAME(PEAU DE BOEUF)"],"AGLAN(CRABE)":["AGLAN(CRABE)"],"CREVETTE":["CREVETTE"]}
+saucesa1={"GBOMA":["oignon","gingembre"," ail","Tomate frais","piment frais","tomate concentre","huil rouge","sel","feuille de gboma","cube"],"TOMATE":["TOMATE FRAIS","TOMATE CONCENTRE","HUIL VEGETAL","OIGNON","CUBE","SEL","AIL","PIMENT FRAIS","PIMENT EN POUDRE","POTASE",],"GOUSSI":["sel","oignon","Graine de courge","tomate frais","piment frais","Tomate concentre","cube"],"ADEME":["feuilles ademe","gingembre","oignon","piment frais","huile rouge","sel","potasse","poisson fermente","cube"],"FETRI(GOMBO)":["gombo","tomate frais","oignon","piment frais","sel","gingembre","cube"],"KODORO":["oignon","gingembre","ail","piment frais","sel"," Afiti","Feuille de baobab","cube"],"GNATOU":["Feuille de gnatou","Huil rouge","pate d´arachide","piment frais","oignon","cube","sel","afiti","ail"],"ARACHIDE":["oignon","ail","gingembre","pate d´arachide","tomate frais", "piment frais","sel","tomate concentre","cube"],"CHOU":["TOMATE FRAIS","TOMATE CONCENTRE","HUIL VEGETAL","OIGNON","CUBE","SEL","AIL","PIMENT FRAIS","PIMENT EN POUDRE","POTASE", "choux"],"FETRI POUPOU(GONBO SEC)":["gombo sec","tomate frais","oignon","piment frais","piment en poudre","sel","gingembre","cube"],"DEKOU(GRAINE)":["gingembre","oignon","ail","Sel","tomate frais","oignon","piment frais","Noi de palme","cube"],"EBESSESSI":["piment frais","oignon","tomate","sel","gingembre","cube"],}
+dica1={
+    "DEGUE":["lait","couscous","sucre","glace","arachide"],"TAPIOCA ZOGBON":["tapioca","sel","sucre","lait en poudre"],"ATTIEKE POISSON":["poisson frais","attieke","oignon","ail","piment frai","huile d´arachide","sel"],"SPAGHETTI BLANC":["spagheti sel"],"SALADE":["Laitue","Tomate","oignon","Beterave","Carotte","Concombre","Mayonnaise","cube","sardine","oeuf","spagheti","huil","vinaigre","pain"],"HARICO HUIL ROUGE":["harico","sel","potasse","oignon","ail","huil rouge","Gari"],"HARICO HUIL ARACHIDE":["harico","sel","potasse","oignon","ail","huil d´arachide","Gari"]
 }
 lisa1.update(dica1)
 import itertools
@@ -166,21 +69,17 @@ combinaisons = list(itertools.product(basesa1.keys(), proteinesa1.keys(), sauces
 combinaisons2 = list(itertools.product(bases2a1.keys(), proteines2a1.keys(), sauces2a1.keys()))
 
 # --- FONCTIONS ET BOUCLES (VOTRE STYLE) ---
-lis = {}
+lis={}
 lis.update(dica1)
-
-
 def afficfer(combi):
     # Cette fonction déballe la combinaison actuelle
     b, p, s = combi
     return b, p, s
 
-
 def afficfer2(combi2):
     # Cette fonction déballe la combinaison du groupe 2
     b2, p2, s2 = combi2
     return b2, p2, s2
-
 
 # Boucle pour le premier groupe
 for combi in combinaisons:
@@ -198,6 +97,9 @@ for combi2 in combinaisons2:
     valeur2 = bases2a1[b2] + proteines2a1[p2] + sauces2a1[s2]
     lis[nom2] = valeur2
 
+
+
+
 RECIPES = lis
 
 # --- LOGIQUE POUR COMPLÉTER JUSQU'À 1000 ---
@@ -208,11 +110,12 @@ RECIPES = lis
 MARKET_ITEMS = [
     # --- FÉCULENTS & TUBERCULES ---
     {"n": "Igname", "p": 1200, "u": "tubercule", "c": "Féculents"},
-    {"n": "maïs", "p": 600, "u": "bole", "c": "Féculents"},
-    {"n": "Pâte de maïs fermentée", "p": 200, "u": "boule", "c": "Féculents"},
+    {"n": "Farine de maïs", "p": 500, "u": "kg", "c": "Féculents"},
+    {"n": "Farine de riz", "p": 800, "u": "kg", "c": "Féculents"},
+    {"n": "Pâte de maïs fermentée", "p": 300, "u": "kg", "c": "Féculents"},
     {"n": "Riz", "p": 600, "u": "kg", "c": "Féculents"},
     {"n": "Couscous", "p": 1000, "u": "paquet", "c": "Féculents"},
-    {"n": "Spaghetti", "p": 350, "u": "paquet", "c": "Féculents"},
+    {"n": "Spaghetti", "p": 400, "u": "paquet", "c": "Féculents"},
     {"n": "Banane Plantain", "p": 1000, "u": "tas", "c": "Féculents"},
     {"n": "Haricot", "p": 900, "u": "kg", "c": "Féculents"},
     {"n": "Attiéké", "p": 250, "u": "boule", "c": "Féculents"},
@@ -280,7 +183,7 @@ MARKET_ITEMS = [
 ]
 # --- BASES DE DONNÉES (Coût des ingrédients par personne) ---
 import itertools
-# -------------------
+#-------------------
 import itertools
 import math
 
@@ -289,835 +192,119 @@ import math
 
 # --- 1. DÉFINITION DES SOURCES (STRUCTURE DES MENUS) ---
 # Ces dictionnaires servent de "moules" pour créer les combinaisons.
+basesa1 = {"TEKON(IGNAME BOULLIE)": 0, "ABLO": 0, "DJINKOUME": 0, "COUSCOUS": 0, "TIMBANI": 0, "SPAGHETTI": 0}
+proteinesa1 = {"RIEN": 0, "AKPALAN(POISSON FUME)": 0, "DEUEVI(PETIT POISSON)": 0, "APKALAN KANAMI(POISSON FRIT)": 0,
+               "AKPAME(PEAU DE BOEUF)": 0, "AGLAN(CRABE)": 0}
+saucesa1 = {"TOMATE": 0, "ADEME": 0, "GBOMA": 0, "ARACHIDE": 0}
+
+bases2a1 = {"KOLIKO": 0, "RIZ": 0, "AMANDA(ALLOCO)": 0, "AYIMOLOU": 0}
+proteines2a1 = {"RIEN": 0, "POULET": 0, "BOEUF": 0, "MOUTON": 0, "CREVETTE": 0, "APKALAN KANAMI(POISSON FRIT)": 0}
+sauces2a1 = {"TOMATE": 0}
 
 
-# ---------------------------------------------------------------------------------------------
-# generateur 1-3
-# ---------------------------------------------------------------------------------------------
-# --- Initialisation des résultats ---
-lis2 = {}
-lis1 = {'TEKON(IGNAME BOULLIE) sauce TOMATE avec RIEN ': 2725,
-        'TEKON(IGNAME BOULLIE) sauce TOMATE avec AKPALAN(POISSON FUME)': 3225,
-        'TEKON(IGNAME BOULLIE) sauce TOMATE avec DEUEVI(PETIT POISSON)': 2925,
-        'TEKON(IGNAME BOULLIE) sauce TOMATE avec APKALAN KANAMI(POISSON FRIT)': 3025,
-        'TEKON(IGNAME BOULLIE) sauce TOMATE avec POULET': 3225, 'TEKON(IGNAME BOULLIE) sauce TOMATE avec BOEUF': 3725,
-        'TEKON(IGNAME BOULLIE) sauce TOMATE avec MOUTON': 3725,
-        'TEKON(IGNAME BOULLIE) sauce TOMATE avec AKPAMA(PEAU DE BOEUF)': 3225,
-        'TEKON(IGNAME BOULLIE) sauce TOMATE avec AGLAN(CRABE)': 3225,
-        'TEKON(IGNAME BOULLIE) sauce TOMATE avec CREVETTE': 3225, 'ABLO sauce TOMATE avec RIEN ': 3825,
-        'ABLO sauce TOMATE avec AKPALAN(POISSON FUME)': 4325, 'ABLO sauce TOMATE avec DEUEVI(PETIT POISSON)': 4025,
-        'ABLO sauce TOMATE avec APKALAN KANAMI(POISSON FRIT)': 4125, 'ABLO sauce TOMATE avec POULET': 4325,
-        'ABLO sauce TOMATE avec BOEUF': 4825, 'ABLO sauce TOMATE avec MOUTON': 4825,
-        'ABLO sauce TOMATE avec AKPAMA(PEAU DE BOEUF)': 4325, 'ABLO sauce TOMATE avec AGLAN(CRABE)': 4325,
-        'ABLO sauce TOMATE avec CREVETTE': 4325, 'DJINKOUME sauce TOMATE avec RIEN ': 2100,
-        'DJINKOUME sauce TOMATE avec AKPALAN(POISSON FUME)': 2600,
-        'DJINKOUME sauce TOMATE avec DEUEVI(PETIT POISSON)': 2300,
-        'DJINKOUME sauce TOMATE avec APKALAN KANAMI(POISSON FRIT)': 2400, 'DJINKOUME sauce TOMATE avec POULET': 2600,
-        'DJINKOUME sauce TOMATE avec BOEUF': 3100, 'DJINKOUME sauce TOMATE avec MOUTON': 3100,
-        'DJINKOUME sauce TOMATE avec AKPAMA(PEAU DE BOEUF)': 2600, 'DJINKOUME sauce TOMATE avec AGLAN(CRABE)': 2600,
-        'DJINKOUME sauce TOMATE avec CREVETTE': 2600, 'COUSCOUS sauce TOMATE avec RIEN ': 2725,
-        'COUSCOUS sauce TOMATE avec AKPALAN(POISSON FUME)': 3225,
-        'COUSCOUS sauce TOMATE avec DEUEVI(PETIT POISSON)': 2925,
-        'COUSCOUS sauce TOMATE avec APKALAN KANAMI(POISSON FRIT)': 3025, 'COUSCOUS sauce TOMATE avec POULET': 3225,
-        'COUSCOUS sauce TOMATE avec BOEUF': 3725, 'COUSCOUS sauce TOMATE avec MOUTON': 3725,
-        'COUSCOUS sauce TOMATE avec AKPAMA(PEAU DE BOEUF)': 3225, 'COUSCOUS sauce TOMATE avec AGLAN(CRABE)': 3225,
-        'COUSCOUS sauce TOMATE avec CREVETTE': 3225, 'KOLIKO sauce TOMATE avec RIEN ': 3025,
-        'KOLIKO sauce TOMATE avec AKPALAN(POISSON FUME)': 3525, 'KOLIKO sauce TOMATE avec DEUEVI(PETIT POISSON)': 3225,
-        'KOLIKO sauce TOMATE avec APKALAN KANAMI(POISSON FRIT)': 3325, 'KOLIKO sauce TOMATE avec POULET': 3525,
-        'KOLIKO sauce TOMATE avec BOEUF': 4025, 'KOLIKO sauce TOMATE avec MOUTON': 4025,
-        'KOLIKO sauce TOMATE avec AKPAMA(PEAU DE BOEUF)': 3525, 'KOLIKO sauce TOMATE avec AGLAN(CRABE)': 3525,
-        'KOLIKO sauce TOMATE avec CREVETTE': 3525, 'TIMBANI sauce TOMATE avec RIEN ': 1725,
-        'TIMBANI sauce TOMATE avec AKPALAN(POISSON FUME)': 2225,
-        'TIMBANI sauce TOMATE avec DEUEVI(PETIT POISSON)': 1925,
-        'TIMBANI sauce TOMATE avec APKALAN KANAMI(POISSON FRIT)': 2025, 'TIMBANI sauce TOMATE avec POULET': 2225,
-        'TIMBANI sauce TOMATE avec BOEUF': 2725, 'TIMBANI sauce TOMATE avec MOUTON': 2725,
-        'TIMBANI sauce TOMATE avec AKPAMA(PEAU DE BOEUF)': 2225, 'TIMBANI sauce TOMATE avec AGLAN(CRABE)': 2225,
-        'TIMBANI sauce TOMATE avec CREVETTE': 2225, 'RIZ sauce TOMATE avec RIEN ': 1975,
-        'RIZ sauce TOMATE avec AKPALAN(POISSON FUME)': 2475, 'RIZ sauce TOMATE avec DEUEVI(PETIT POISSON)': 2175,
-        'RIZ sauce TOMATE avec APKALAN KANAMI(POISSON FRIT)': 2275, 'RIZ sauce TOMATE avec POULET': 2475,
-        'RIZ sauce TOMATE avec BOEUF': 2975, 'RIZ sauce TOMATE avec MOUTON': 2975,
-        'RIZ sauce TOMATE avec AKPAMA(PEAU DE BOEUF)': 2475, 'RIZ sauce TOMATE avec AGLAN(CRABE)': 2475,
-        'RIZ sauce TOMATE avec CREVETTE': 2475, 'AMANDA(ALLOCO) sauce TOMATE avec RIEN ': 2525,
-        'AMANDA(ALLOCO) sauce TOMATE avec AKPALAN(POISSON FUME)': 3025,
-        'AMANDA(ALLOCO) sauce TOMATE avec DEUEVI(PETIT POISSON)': 2725,
-        'AMANDA(ALLOCO) sauce TOMATE avec APKALAN KANAMI(POISSON FRIT)': 2825,
-        'AMANDA(ALLOCO) sauce TOMATE avec POULET': 3025, 'AMANDA(ALLOCO) sauce TOMATE avec BOEUF': 3525,
-        'AMANDA(ALLOCO) sauce TOMATE avec MOUTON': 3525, 'AMANDA(ALLOCO) sauce TOMATE avec AKPAMA(PEAU DE BOEUF)': 3025,
-        'AMANDA(ALLOCO) sauce TOMATE avec AGLAN(CRABE)': 3025, 'AMANDA(ALLOCO) sauce TOMATE avec CREVETTE': 3025,
-        'AYIMOLOU sauce TOMATE avec RIEN ': 2500, 'AYIMOLOU sauce TOMATE avec AKPALAN(POISSON FUME)': 3000,
-        'AYIMOLOU sauce TOMATE avec DEUEVI(PETIT POISSON)': 2700,
-        'AYIMOLOU sauce TOMATE avec APKALAN KANAMI(POISSON FRIT)': 2800, 'AYIMOLOU sauce TOMATE avec POULET': 3000,
-        'AYIMOLOU sauce TOMATE avec BOEUF': 3500, 'AYIMOLOU sauce TOMATE avec MOUTON': 3500,
-        'AYIMOLOU sauce TOMATE avec AKPAMA(PEAU DE BOEUF)': 3000, 'AYIMOLOU sauce TOMATE avec AGLAN(CRABE)': 3000,
-        'AYIMOLOU sauce TOMATE avec CREVETTE': 3000, 'SPAGHETTI sauce TOMATE avec RIEN ': 1575,
-        'SPAGHETTI sauce TOMATE avec AKPALAN(POISSON FUME)': 2075,
-        'SPAGHETTI sauce TOMATE avec DEUEVI(PETIT POISSON)': 1775,
-        'SPAGHETTI sauce TOMATE avec APKALAN KANAMI(POISSON FRIT)': 1875, 'SPAGHETTI sauce TOMATE avec POULET': 2075,
-        'SPAGHETTI sauce TOMATE avec BOEUF': 2575, 'SPAGHETTI sauce TOMATE avec MOUTON': 2575,
-        'SPAGHETTI sauce TOMATE avec AKPAMA(PEAU DE BOEUF)': 2075, 'SPAGHETTI sauce TOMATE avec AGLAN(CRABE)': 2075,
-        'SPAGHETTI sauce TOMATE avec CREVETTE': 2075, 'FOUFOU IGNAME sauce GBOMA avec RIEN ': 3625,
-        'FOUFOU IGNAME sauce GBOMA avec AKPALAN(POISSON FUME)': 4125,
-        'FOUFOU IGNAME sauce GBOMA avec DEUEVI(PETIT POISSON)': 3825,
-        'FOUFOU IGNAME sauce GBOMA avec APKALAN KANAMI(POISSON FRIT)': 3925,
-        'FOUFOU IGNAME sauce GBOMA avec POULET': 4125, 'FOUFOU IGNAME sauce GBOMA avec BOEUF': 4625,
-        'FOUFOU IGNAME sauce GBOMA avec MOUTON': 4625, 'FOUFOU IGNAME sauce GBOMA avec AKPAMA(PEAU DE BOEUF)': 4125,
-        'FOUFOU IGNAME sauce GBOMA avec AGLAN(CRABE)': 4125, 'FOUFOU IGNAME sauce GBOMA avec CREVETTE': 4125,
-        'FOUFOU IGNAME sauce TOMATE avec RIEN ': 3325, 'FOUFOU IGNAME sauce TOMATE avec AKPALAN(POISSON FUME)': 3825,
-        'FOUFOU IGNAME sauce TOMATE avec DEUEVI(PETIT POISSON)': 3525,
-        'FOUFOU IGNAME sauce TOMATE avec APKALAN KANAMI(POISSON FRIT)': 3625,
-        'FOUFOU IGNAME sauce TOMATE avec POULET': 3825, 'FOUFOU IGNAME sauce TOMATE avec BOEUF': 4325,
-        'FOUFOU IGNAME sauce TOMATE avec MOUTON': 4325, 'FOUFOU IGNAME sauce TOMATE avec AKPAMA(PEAU DE BOEUF)': 3825,
-        'FOUFOU IGNAME sauce TOMATE avec AGLAN(CRABE)': 3825, 'FOUFOU IGNAME sauce TOMATE avec CREVETTE': 3825,
-        'FOUFOU IGNAME sauce GOUSSI avec RIEN ': 3325, 'FOUFOU IGNAME sauce GOUSSI avec AKPALAN(POISSON FUME)': 3825,
-        'FOUFOU IGNAME sauce GOUSSI avec DEUEVI(PETIT POISSON)': 3525,
-        'FOUFOU IGNAME sauce GOUSSI avec APKALAN KANAMI(POISSON FRIT)': 3625,
-        'FOUFOU IGNAME sauce GOUSSI avec POULET': 3825, 'FOUFOU IGNAME sauce GOUSSI avec BOEUF': 4325,
-        'FOUFOU IGNAME sauce GOUSSI avec MOUTON': 4325, 'FOUFOU IGNAME sauce GOUSSI avec AKPAMA(PEAU DE BOEUF)': 3825,
-        'FOUFOU IGNAME sauce GOUSSI avec AGLAN(CRABE)': 3825, 'FOUFOU IGNAME sauce GOUSSI avec CREVETTE': 3825,
-        'FOUFOU IGNAME sauce ADEME avec RIEN ': 3125, 'FOUFOU IGNAME sauce ADEME avec AKPALAN(POISSON FUME)': 3625,
-        'FOUFOU IGNAME sauce ADEME avec DEUEVI(PETIT POISSON)': 3325,
-        'FOUFOU IGNAME sauce ADEME avec APKALAN KANAMI(POISSON FRIT)': 3425,
-        'FOUFOU IGNAME sauce ADEME avec POULET': 3625, 'FOUFOU IGNAME sauce ADEME avec BOEUF': 4125,
-        'FOUFOU IGNAME sauce ADEME avec MOUTON': 4125, 'FOUFOU IGNAME sauce ADEME avec AKPAMA(PEAU DE BOEUF)': 3625,
-        'FOUFOU IGNAME sauce ADEME avec AGLAN(CRABE)': 3625, 'FOUFOU IGNAME sauce ADEME avec CREVETTE': 3625,
-        'FOUFOU IGNAME sauce FETRI(GOMBO) avec RIEN ': 2825,
-        'FOUFOU IGNAME sauce FETRI(GOMBO) avec AKPALAN(POISSON FUME)': 3325,
-        'FOUFOU IGNAME sauce FETRI(GOMBO) avec DEUEVI(PETIT POISSON)': 3025,
-        'FOUFOU IGNAME sauce FETRI(GOMBO) avec APKALAN KANAMI(POISSON FRIT)': 3125,
-        'FOUFOU IGNAME sauce FETRI(GOMBO) avec POULET': 3325, 'FOUFOU IGNAME sauce FETRI(GOMBO) avec BOEUF': 3825,
-        'FOUFOU IGNAME sauce FETRI(GOMBO) avec MOUTON': 3825,
-        'FOUFOU IGNAME sauce FETRI(GOMBO) avec AKPAMA(PEAU DE BOEUF)': 3325,
-        'FOUFOU IGNAME sauce FETRI(GOMBO) avec AGLAN(CRABE)': 3325,
-        'FOUFOU IGNAME sauce FETRI(GOMBO) avec CREVETTE': 3325, 'FOUFOU IGNAME sauce KODORO avec RIEN ': 2925,
-        'FOUFOU IGNAME sauce KODORO avec AKPALAN(POISSON FUME)': 3425,
-        'FOUFOU IGNAME sauce KODORO avec DEUEVI(PETIT POISSON)': 3125,
-        'FOUFOU IGNAME sauce KODORO avec APKALAN KANAMI(POISSON FRIT)': 3225,
-        'FOUFOU IGNAME sauce KODORO avec POULET': 3425, 'FOUFOU IGNAME sauce KODORO avec BOEUF': 3925,
-        'FOUFOU IGNAME sauce KODORO avec MOUTON': 3925, 'FOUFOU IGNAME sauce KODORO avec AKPAMA(PEAU DE BOEUF)': 3425,
-        'FOUFOU IGNAME sauce KODORO avec AGLAN(CRABE)': 3425, 'FOUFOU IGNAME sauce KODORO avec CREVETTE': 3425,
-        'FOUFOU IGNAME sauce GNATOU avec RIEN ': 3225, 'FOUFOU IGNAME sauce GNATOU avec AKPALAN(POISSON FUME)': 3725,
-        'FOUFOU IGNAME sauce GNATOU avec DEUEVI(PETIT POISSON)': 3425,
-        'FOUFOU IGNAME sauce GNATOU avec APKALAN KANAMI(POISSON FRIT)': 3525,
-        'FOUFOU IGNAME sauce GNATOU avec POULET': 3725, 'FOUFOU IGNAME sauce GNATOU avec BOEUF': 4225,
-        'FOUFOU IGNAME sauce GNATOU avec MOUTON': 4225, 'FOUFOU IGNAME sauce GNATOU avec AKPAMA(PEAU DE BOEUF)': 3725,
-        'FOUFOU IGNAME sauce GNATOU avec AGLAN(CRABE)': 3725, 'FOUFOU IGNAME sauce GNATOU avec CREVETTE': 3725,
-        'FOUFOU IGNAME sauce ARACHIDE avec RIEN ': 3175,
-        'FOUFOU IGNAME sauce ARACHIDE avec AKPALAN(POISSON FUME)': 3675,
-        'FOUFOU IGNAME sauce ARACHIDE avec DEUEVI(PETIT POISSON)': 3375,
-        'FOUFOU IGNAME sauce ARACHIDE avec APKALAN KANAMI(POISSON FRIT)': 3475,
-        'FOUFOU IGNAME sauce ARACHIDE avec POULET': 3675, 'FOUFOU IGNAME sauce ARACHIDE avec BOEUF': 4175,
-        'FOUFOU IGNAME sauce ARACHIDE avec MOUTON': 4175,
-        'FOUFOU IGNAME sauce ARACHIDE avec AKPAMA(PEAU DE BOEUF)': 3675,
-        'FOUFOU IGNAME sauce ARACHIDE avec AGLAN(CRABE)': 3675, 'FOUFOU IGNAME sauce ARACHIDE avec CREVETTE': 3675,
-        'FOUFOU IGNAME sauce CHOU avec RIEN ': 3725, 'FOUFOU IGNAME sauce CHOU avec AKPALAN(POISSON FUME)': 4225,
-        'FOUFOU IGNAME sauce CHOU avec DEUEVI(PETIT POISSON)': 3925,
-        'FOUFOU IGNAME sauce CHOU avec APKALAN KANAMI(POISSON FRIT)': 4025,
-        'FOUFOU IGNAME sauce CHOU avec POULET': 4225, 'FOUFOU IGNAME sauce CHOU avec BOEUF': 4725,
-        'FOUFOU IGNAME sauce CHOU avec MOUTON': 4725, 'FOUFOU IGNAME sauce CHOU avec AKPAMA(PEAU DE BOEUF)': 4225,
-        'FOUFOU IGNAME sauce CHOU avec AGLAN(CRABE)': 4225, 'FOUFOU IGNAME sauce CHOU avec CREVETTE': 4225,
-        'FOUFOU IGNAME sauce FETRI POUPOU(GONBO SEC) avec RIEN ': 2975,
-        'FOUFOU IGNAME sauce FETRI POUPOU(GONBO SEC) avec AKPALAN(POISSON FUME)': 3475,
-        'FOUFOU IGNAME sauce FETRI POUPOU(GONBO SEC) avec DEUEVI(PETIT POISSON)': 3175,
-        'FOUFOU IGNAME sauce FETRI POUPOU(GONBO SEC) avec APKALAN KANAMI(POISSON FRIT)': 3275,
-        'FOUFOU IGNAME sauce FETRI POUPOU(GONBO SEC) avec POULET': 3475,
-        'FOUFOU IGNAME sauce FETRI POUPOU(GONBO SEC) avec BOEUF': 3975,
-        'FOUFOU IGNAME sauce FETRI POUPOU(GONBO SEC) avec MOUTON': 3975,
-        'FOUFOU IGNAME sauce FETRI POUPOU(GONBO SEC) avec AKPAMA(PEAU DE BOEUF)': 3475,
-        'FOUFOU IGNAME sauce FETRI POUPOU(GONBO SEC) avec AGLAN(CRABE)': 3475,
-        'FOUFOU IGNAME sauce FETRI POUPOU(GONBO SEC) avec CREVETTE': 3475,
-        'FOUFOU IGNAME sauce DEKOU(GRAINE) avec RIEN ': 3625,
-        'FOUFOU IGNAME sauce DEKOU(GRAINE) avec AKPALAN(POISSON FUME)': 4125,
-        'FOUFOU IGNAME sauce DEKOU(GRAINE) avec DEUEVI(PETIT POISSON)': 3825,
-        'FOUFOU IGNAME sauce DEKOU(GRAINE) avec APKALAN KANAMI(POISSON FRIT)': 3925,
-        'FOUFOU IGNAME sauce DEKOU(GRAINE) avec POULET': 4125, 'FOUFOU IGNAME sauce DEKOU(GRAINE) avec BOEUF': 4625,
-        'FOUFOU IGNAME sauce DEKOU(GRAINE) avec MOUTON': 4625,
-        'FOUFOU IGNAME sauce DEKOU(GRAINE) avec AKPAMA(PEAU DE BOEUF)': 4125,
-        'FOUFOU IGNAME sauce DEKOU(GRAINE) avec AGLAN(CRABE)': 4125,
-        'FOUFOU IGNAME sauce DEKOU(GRAINE) avec CREVETTE': 4125, 'FOUFOU IGNAME sauce EBESSESSI avec RIEN ': 2675,
-        'FOUFOU IGNAME sauce EBESSESSI avec AKPALAN(POISSON FUME)': 3175,
-        'FOUFOU IGNAME sauce EBESSESSI avec DEUEVI(PETIT POISSON)': 2875,
-        'FOUFOU IGNAME sauce EBESSESSI avec APKALAN KANAMI(POISSON FRIT)': 2975,
-        'FOUFOU IGNAME sauce EBESSESSI avec POULET': 3175, 'FOUFOU IGNAME sauce EBESSESSI avec BOEUF': 3675,
-        'FOUFOU IGNAME sauce EBESSESSI avec MOUTON': 3675,
-        'FOUFOU IGNAME sauce EBESSESSI avec AKPAMA(PEAU DE BOEUF)': 3175,
-        'FOUFOU IGNAME sauce EBESSESSI avec AGLAN(CRABE)': 3175, 'FOUFOU IGNAME sauce EBESSESSI avec CREVETTE': 3175,
-        'FOUFOU PLANTAIN sauce GBOMA avec RIEN ': 2625, 'FOUFOU PLANTAIN sauce GBOMA avec AKPALAN(POISSON FUME)': 3125,
-        'FOUFOU PLANTAIN sauce GBOMA avec DEUEVI(PETIT POISSON)': 2825,
-        'FOUFOU PLANTAIN sauce GBOMA avec APKALAN KANAMI(POISSON FRIT)': 2925,
-        'FOUFOU PLANTAIN sauce GBOMA avec POULET': 3125, 'FOUFOU PLANTAIN sauce GBOMA avec BOEUF': 3625,
-        'FOUFOU PLANTAIN sauce GBOMA avec MOUTON': 3625, 'FOUFOU PLANTAIN sauce GBOMA avec AKPAMA(PEAU DE BOEUF)': 3125,
-        'FOUFOU PLANTAIN sauce GBOMA avec AGLAN(CRABE)': 3125, 'FOUFOU PLANTAIN sauce GBOMA avec CREVETTE': 3125,
-        'FOUFOU PLANTAIN sauce TOMATE avec RIEN ': 2325,
-        'FOUFOU PLANTAIN sauce TOMATE avec AKPALAN(POISSON FUME)': 2825,
-        'FOUFOU PLANTAIN sauce TOMATE avec DEUEVI(PETIT POISSON)': 2525,
-        'FOUFOU PLANTAIN sauce TOMATE avec APKALAN KANAMI(POISSON FRIT)': 2625,
-        'FOUFOU PLANTAIN sauce TOMATE avec POULET': 2825, 'FOUFOU PLANTAIN sauce TOMATE avec BOEUF': 3325,
-        'FOUFOU PLANTAIN sauce TOMATE avec MOUTON': 3325,
-        'FOUFOU PLANTAIN sauce TOMATE avec AKPAMA(PEAU DE BOEUF)': 2825,
-        'FOUFOU PLANTAIN sauce TOMATE avec AGLAN(CRABE)': 2825, 'FOUFOU PLANTAIN sauce TOMATE avec CREVETTE': 2825,
-        'FOUFOU PLANTAIN sauce GOUSSI avec RIEN ': 2325,
-        'FOUFOU PLANTAIN sauce GOUSSI avec AKPALAN(POISSON FUME)': 2825,
-        'FOUFOU PLANTAIN sauce GOUSSI avec DEUEVI(PETIT POISSON)': 2525,
-        'FOUFOU PLANTAIN sauce GOUSSI avec APKALAN KANAMI(POISSON FRIT)': 2625,
-        'FOUFOU PLANTAIN sauce GOUSSI avec POULET': 2825, 'FOUFOU PLANTAIN sauce GOUSSI avec BOEUF': 3325,
-        'FOUFOU PLANTAIN sauce GOUSSI avec MOUTON': 3325,
-        'FOUFOU PLANTAIN sauce GOUSSI avec AKPAMA(PEAU DE BOEUF)': 2825,
-        'FOUFOU PLANTAIN sauce GOUSSI avec AGLAN(CRABE)': 2825, 'FOUFOU PLANTAIN sauce GOUSSI avec CREVETTE': 2825,
-        'FOUFOU PLANTAIN sauce ADEME avec RIEN ': 2125, 'FOUFOU PLANTAIN sauce ADEME avec AKPALAN(POISSON FUME)': 2625,
-        'FOUFOU PLANTAIN sauce ADEME avec DEUEVI(PETIT POISSON)': 2325,
-        'FOUFOU PLANTAIN sauce ADEME avec APKALAN KANAMI(POISSON FRIT)': 2425,
-        'FOUFOU PLANTAIN sauce ADEME avec POULET': 2625, 'FOUFOU PLANTAIN sauce ADEME avec BOEUF': 3125,
-        'FOUFOU PLANTAIN sauce ADEME avec MOUTON': 3125, 'FOUFOU PLANTAIN sauce ADEME avec AKPAMA(PEAU DE BOEUF)': 2625,
-        'FOUFOU PLANTAIN sauce ADEME avec AGLAN(CRABE)': 2625, 'FOUFOU PLANTAIN sauce ADEME avec CREVETTE': 2625,
-        'FOUFOU PLANTAIN sauce FETRI(GOMBO) avec RIEN ': 1825,
-        'FOUFOU PLANTAIN sauce FETRI(GOMBO) avec AKPALAN(POISSON FUME)': 2325,
-        'FOUFOU PLANTAIN sauce FETRI(GOMBO) avec DEUEVI(PETIT POISSON)': 2025,
-        'FOUFOU PLANTAIN sauce FETRI(GOMBO) avec APKALAN KANAMI(POISSON FRIT)': 2125,
-        'FOUFOU PLANTAIN sauce FETRI(GOMBO) avec POULET': 2325, 'FOUFOU PLANTAIN sauce FETRI(GOMBO) avec BOEUF': 2825,
-        'FOUFOU PLANTAIN sauce FETRI(GOMBO) avec MOUTON': 2825,
-        'FOUFOU PLANTAIN sauce FETRI(GOMBO) avec AKPAMA(PEAU DE BOEUF)': 2325,
-        'FOUFOU PLANTAIN sauce FETRI(GOMBO) avec AGLAN(CRABE)': 2325,
-        'FOUFOU PLANTAIN sauce FETRI(GOMBO) avec CREVETTE': 2325, 'FOUFOU PLANTAIN sauce KODORO avec RIEN ': 1925,
-        'FOUFOU PLANTAIN sauce KODORO avec AKPALAN(POISSON FUME)': 2425,
-        'FOUFOU PLANTAIN sauce KODORO avec DEUEVI(PETIT POISSON)': 2125,
-        'FOUFOU PLANTAIN sauce KODORO avec APKALAN KANAMI(POISSON FRIT)': 2225,
-        'FOUFOU PLANTAIN sauce KODORO avec POULET': 2425, 'FOUFOU PLANTAIN sauce KODORO avec BOEUF': 2925,
-        'FOUFOU PLANTAIN sauce KODORO avec MOUTON': 2925,
-        'FOUFOU PLANTAIN sauce KODORO avec AKPAMA(PEAU DE BOEUF)': 2425,
-        'FOUFOU PLANTAIN sauce KODORO avec AGLAN(CRABE)': 2425, 'FOUFOU PLANTAIN sauce KODORO avec CREVETTE': 2425,
-        'FOUFOU PLANTAIN sauce GNATOU avec RIEN ': 2225,
-        'FOUFOU PLANTAIN sauce GNATOU avec AKPALAN(POISSON FUME)': 2725,
-        'FOUFOU PLANTAIN sauce GNATOU avec DEUEVI(PETIT POISSON)': 2425,
-        'FOUFOU PLANTAIN sauce GNATOU avec APKALAN KANAMI(POISSON FRIT)': 2525,
-        'FOUFOU PLANTAIN sauce GNATOU avec POULET': 2725, 'FOUFOU PLANTAIN sauce GNATOU avec BOEUF': 3225,
-        'FOUFOU PLANTAIN sauce GNATOU avec MOUTON': 3225,
-        'FOUFOU PLANTAIN sauce GNATOU avec AKPAMA(PEAU DE BOEUF)': 2725,
-        'FOUFOU PLANTAIN sauce GNATOU avec AGLAN(CRABE)': 2725, 'FOUFOU PLANTAIN sauce GNATOU avec CREVETTE': 2725,
-        'FOUFOU PLANTAIN sauce ARACHIDE avec RIEN ': 2175,
-        'FOUFOU PLANTAIN sauce ARACHIDE avec AKPALAN(POISSON FUME)': 2675,
-        'FOUFOU PLANTAIN sauce ARACHIDE avec DEUEVI(PETIT POISSON)': 2375,
-        'FOUFOU PLANTAIN sauce ARACHIDE avec APKALAN KANAMI(POISSON FRIT)': 2475,
-        'FOUFOU PLANTAIN sauce ARACHIDE avec POULET': 2675, 'FOUFOU PLANTAIN sauce ARACHIDE avec BOEUF': 3175,
-        'FOUFOU PLANTAIN sauce ARACHIDE avec MOUTON': 3175,
-        'FOUFOU PLANTAIN sauce ARACHIDE avec AKPAMA(PEAU DE BOEUF)': 2675,
-        'FOUFOU PLANTAIN sauce ARACHIDE avec AGLAN(CRABE)': 2675, 'FOUFOU PLANTAIN sauce ARACHIDE avec CREVETTE': 2675,
-        'FOUFOU PLANTAIN sauce CHOU avec RIEN ': 2725, 'FOUFOU PLANTAIN sauce CHOU avec AKPALAN(POISSON FUME)': 3225,
-        'FOUFOU PLANTAIN sauce CHOU avec DEUEVI(PETIT POISSON)': 2925,
-        'FOUFOU PLANTAIN sauce CHOU avec APKALAN KANAMI(POISSON FRIT)': 3025,
-        'FOUFOU PLANTAIN sauce CHOU avec POULET': 3225, 'FOUFOU PLANTAIN sauce CHOU avec BOEUF': 3725,
-        'FOUFOU PLANTAIN sauce CHOU avec MOUTON': 3725, 'FOUFOU PLANTAIN sauce CHOU avec AKPAMA(PEAU DE BOEUF)': 3225,
-        'FOUFOU PLANTAIN sauce CHOU avec AGLAN(CRABE)': 3225, 'FOUFOU PLANTAIN sauce CHOU avec CREVETTE': 3225,
-        'FOUFOU PLANTAIN sauce FETRI POUPOU(GONBO SEC) avec RIEN ': 1975,
-        'FOUFOU PLANTAIN sauce FETRI POUPOU(GONBO SEC) avec AKPALAN(POISSON FUME)': 2475,
-        'FOUFOU PLANTAIN sauce FETRI POUPOU(GONBO SEC) avec DEUEVI(PETIT POISSON)': 2175,
-        'FOUFOU PLANTAIN sauce FETRI POUPOU(GONBO SEC) avec APKALAN KANAMI(POISSON FRIT)': 2275,
-        'FOUFOU PLANTAIN sauce FETRI POUPOU(GONBO SEC) avec POULET': 2475,
-        'FOUFOU PLANTAIN sauce FETRI POUPOU(GONBO SEC) avec BOEUF': 2975,
-        'FOUFOU PLANTAIN sauce FETRI POUPOU(GONBO SEC) avec MOUTON': 2975,
-        'FOUFOU PLANTAIN sauce FETRI POUPOU(GONBO SEC) avec AKPAMA(PEAU DE BOEUF)': 2475,
-        'FOUFOU PLANTAIN sauce FETRI POUPOU(GONBO SEC) avec AGLAN(CRABE)': 2475,
-        'FOUFOU PLANTAIN sauce FETRI POUPOU(GONBO SEC) avec CREVETTE': 2475,
-        'FOUFOU PLANTAIN sauce DEKOU(GRAINE) avec RIEN ': 2625,
-        'FOUFOU PLANTAIN sauce DEKOU(GRAINE) avec AKPALAN(POISSON FUME)': 3125,
-        'FOUFOU PLANTAIN sauce DEKOU(GRAINE) avec DEUEVI(PETIT POISSON)': 2825,
-        'FOUFOU PLANTAIN sauce DEKOU(GRAINE) avec APKALAN KANAMI(POISSON FRIT)': 2925,
-        'FOUFOU PLANTAIN sauce DEKOU(GRAINE) avec POULET': 3125, 'FOUFOU PLANTAIN sauce DEKOU(GRAINE) avec BOEUF': 3625,
-        'FOUFOU PLANTAIN sauce DEKOU(GRAINE) avec MOUTON': 3625,
-        'FOUFOU PLANTAIN sauce DEKOU(GRAINE) avec AKPAMA(PEAU DE BOEUF)': 3125,
-        'FOUFOU PLANTAIN sauce DEKOU(GRAINE) avec AGLAN(CRABE)': 3125,
-        'FOUFOU PLANTAIN sauce DEKOU(GRAINE) avec CREVETTE': 3125, 'FOUFOU PLANTAIN sauce EBESSESSI avec RIEN ': 1675,
-        'FOUFOU PLANTAIN sauce EBESSESSI avec AKPALAN(POISSON FUME)': 2175,
-        'FOUFOU PLANTAIN sauce EBESSESSI avec DEUEVI(PETIT POISSON)': 1875,
-        'FOUFOU PLANTAIN sauce EBESSESSI avec APKALAN KANAMI(POISSON FRIT)': 1975,
-        'FOUFOU PLANTAIN sauce EBESSESSI avec POULET': 2175, 'FOUFOU PLANTAIN sauce EBESSESSI avec BOEUF': 2675,
-        'FOUFOU PLANTAIN sauce EBESSESSI avec MOUTON': 2675,
-        'FOUFOU PLANTAIN sauce EBESSESSI avec AKPAMA(PEAU DE BOEUF)': 2175,
-        'FOUFOU PLANTAIN sauce EBESSESSI avec AGLAN(CRABE)': 2175,
-        'FOUFOU PLANTAIN sauce EBESSESSI avec CREVETTE': 2175, 'AKOUME(PATE MAIS) sauce GBOMA avec RIEN ': 2500,
-        'AKOUME(PATE MAIS) sauce GBOMA avec AKPALAN(POISSON FUME)': 3000,
-        'AKOUME(PATE MAIS) sauce GBOMA avec DEUEVI(PETIT POISSON)': 2700,
-        'AKOUME(PATE MAIS) sauce GBOMA avec APKALAN KANAMI(POISSON FRIT)': 2800,
-        'AKOUME(PATE MAIS) sauce GBOMA avec POULET': 3000, 'AKOUME(PATE MAIS) sauce GBOMA avec BOEUF': 3500,
-        'AKOUME(PATE MAIS) sauce GBOMA avec MOUTON': 3500,
-        'AKOUME(PATE MAIS) sauce GBOMA avec AKPAMA(PEAU DE BOEUF)': 3000,
-        'AKOUME(PATE MAIS) sauce GBOMA avec AGLAN(CRABE)': 3000, 'AKOUME(PATE MAIS) sauce GBOMA avec CREVETTE': 3000,
-        'AKOUME(PATE MAIS) sauce TOMATE avec RIEN ': 2200,
-        'AKOUME(PATE MAIS) sauce TOMATE avec AKPALAN(POISSON FUME)': 2700,
-        'AKOUME(PATE MAIS) sauce TOMATE avec DEUEVI(PETIT POISSON)': 2400,
-        'AKOUME(PATE MAIS) sauce TOMATE avec APKALAN KANAMI(POISSON FRIT)': 2500,
-        'AKOUME(PATE MAIS) sauce TOMATE avec POULET': 2700, 'AKOUME(PATE MAIS) sauce TOMATE avec BOEUF': 3200,
-        'AKOUME(PATE MAIS) sauce TOMATE avec MOUTON': 3200,
-        'AKOUME(PATE MAIS) sauce TOMATE avec AKPAMA(PEAU DE BOEUF)': 2700,
-        'AKOUME(PATE MAIS) sauce TOMATE avec AGLAN(CRABE)': 2700, 'AKOUME(PATE MAIS) sauce TOMATE avec CREVETTE': 2700,
-        'AKOUME(PATE MAIS) sauce GOUSSI avec RIEN ': 2200,
-        'AKOUME(PATE MAIS) sauce GOUSSI avec AKPALAN(POISSON FUME)': 2700,
-        'AKOUME(PATE MAIS) sauce GOUSSI avec DEUEVI(PETIT POISSON)': 2400,
-        'AKOUME(PATE MAIS) sauce GOUSSI avec APKALAN KANAMI(POISSON FRIT)': 2500,
-        'AKOUME(PATE MAIS) sauce GOUSSI avec POULET': 2700, 'AKOUME(PATE MAIS) sauce GOUSSI avec BOEUF': 3200,
-        'AKOUME(PATE MAIS) sauce GOUSSI avec MOUTON': 3200,
-        'AKOUME(PATE MAIS) sauce GOUSSI avec AKPAMA(PEAU DE BOEUF)': 2700,
-        'AKOUME(PATE MAIS) sauce GOUSSI avec AGLAN(CRABE)': 2700, 'AKOUME(PATE MAIS) sauce GOUSSI avec CREVETTE': 2700,
-        'AKOUME(PATE MAIS) sauce ADEME avec RIEN ': 2000,
-        'AKOUME(PATE MAIS) sauce ADEME avec AKPALAN(POISSON FUME)': 2500,
-        'AKOUME(PATE MAIS) sauce ADEME avec DEUEVI(PETIT POISSON)': 2200,
-        'AKOUME(PATE MAIS) sauce ADEME avec APKALAN KANAMI(POISSON FRIT)': 2300,
-        'AKOUME(PATE MAIS) sauce ADEME avec POULET': 2500, 'AKOUME(PATE MAIS) sauce ADEME avec BOEUF': 3000,
-        'AKOUME(PATE MAIS) sauce ADEME avec MOUTON': 3000,
-        'AKOUME(PATE MAIS) sauce ADEME avec AKPAMA(PEAU DE BOEUF)': 2500,
-        'AKOUME(PATE MAIS) sauce ADEME avec AGLAN(CRABE)': 2500, 'AKOUME(PATE MAIS) sauce ADEME avec CREVETTE': 2500,
-        'AKOUME(PATE MAIS) sauce FETRI(GOMBO) avec RIEN ': 1700,
-        'AKOUME(PATE MAIS) sauce FETRI(GOMBO) avec AKPALAN(POISSON FUME)': 2200,
-        'AKOUME(PATE MAIS) sauce FETRI(GOMBO) avec DEUEVI(PETIT POISSON)': 1900,
-        'AKOUME(PATE MAIS) sauce FETRI(GOMBO) avec APKALAN KANAMI(POISSON FRIT)': 2000,
-        'AKOUME(PATE MAIS) sauce FETRI(GOMBO) avec POULET': 2200,
-        'AKOUME(PATE MAIS) sauce FETRI(GOMBO) avec BOEUF': 2700,
-        'AKOUME(PATE MAIS) sauce FETRI(GOMBO) avec MOUTON': 2700,
-        'AKOUME(PATE MAIS) sauce FETRI(GOMBO) avec AKPAMA(PEAU DE BOEUF)': 2200,
-        'AKOUME(PATE MAIS) sauce FETRI(GOMBO) avec AGLAN(CRABE)': 2200,
-        'AKOUME(PATE MAIS) sauce FETRI(GOMBO) avec CREVETTE': 2200, 'AKOUME(PATE MAIS) sauce KODORO avec RIEN ': 1800,
-        'AKOUME(PATE MAIS) sauce KODORO avec AKPALAN(POISSON FUME)': 2300,
-        'AKOUME(PATE MAIS) sauce KODORO avec DEUEVI(PETIT POISSON)': 2000,
-        'AKOUME(PATE MAIS) sauce KODORO avec APKALAN KANAMI(POISSON FRIT)': 2100,
-        'AKOUME(PATE MAIS) sauce KODORO avec POULET': 2300, 'AKOUME(PATE MAIS) sauce KODORO avec BOEUF': 2800,
-        'AKOUME(PATE MAIS) sauce KODORO avec MOUTON': 2800,
-        'AKOUME(PATE MAIS) sauce KODORO avec AKPAMA(PEAU DE BOEUF)': 2300,
-        'AKOUME(PATE MAIS) sauce KODORO avec AGLAN(CRABE)': 2300, 'AKOUME(PATE MAIS) sauce KODORO avec CREVETTE': 2300,
-        'AKOUME(PATE MAIS) sauce GNATOU avec RIEN ': 2100,
-        'AKOUME(PATE MAIS) sauce GNATOU avec AKPALAN(POISSON FUME)': 2600,
-        'AKOUME(PATE MAIS) sauce GNATOU avec DEUEVI(PETIT POISSON)': 2300,
-        'AKOUME(PATE MAIS) sauce GNATOU avec APKALAN KANAMI(POISSON FRIT)': 2400,
-        'AKOUME(PATE MAIS) sauce GNATOU avec POULET': 2600, 'AKOUME(PATE MAIS) sauce GNATOU avec BOEUF': 3100,
-        'AKOUME(PATE MAIS) sauce GNATOU avec MOUTON': 3100,
-        'AKOUME(PATE MAIS) sauce GNATOU avec AKPAMA(PEAU DE BOEUF)': 2600,
-        'AKOUME(PATE MAIS) sauce GNATOU avec AGLAN(CRABE)': 2600, 'AKOUME(PATE MAIS) sauce GNATOU avec CREVETTE': 2600,
-        'AKOUME(PATE MAIS) sauce ARACHIDE avec RIEN ': 2050,
-        'AKOUME(PATE MAIS) sauce ARACHIDE avec AKPALAN(POISSON FUME)': 2550,
-        'AKOUME(PATE MAIS) sauce ARACHIDE avec DEUEVI(PETIT POISSON)': 2250,
-        'AKOUME(PATE MAIS) sauce ARACHIDE avec APKALAN KANAMI(POISSON FRIT)': 2350,
-        'AKOUME(PATE MAIS) sauce ARACHIDE avec POULET': 2550, 'AKOUME(PATE MAIS) sauce ARACHIDE avec BOEUF': 3050,
-        'AKOUME(PATE MAIS) sauce ARACHIDE avec MOUTON': 3050,
-        'AKOUME(PATE MAIS) sauce ARACHIDE avec AKPAMA(PEAU DE BOEUF)': 2550,
-        'AKOUME(PATE MAIS) sauce ARACHIDE avec AGLAN(CRABE)': 2550,
-        'AKOUME(PATE MAIS) sauce ARACHIDE avec CREVETTE': 2550, 'AKOUME(PATE MAIS) sauce CHOU avec RIEN ': 2600,
-        'AKOUME(PATE MAIS) sauce CHOU avec AKPALAN(POISSON FUME)': 3100,
-        'AKOUME(PATE MAIS) sauce CHOU avec DEUEVI(PETIT POISSON)': 2800,
-        'AKOUME(PATE MAIS) sauce CHOU avec APKALAN KANAMI(POISSON FRIT)': 2900,
-        'AKOUME(PATE MAIS) sauce CHOU avec POULET': 3100, 'AKOUME(PATE MAIS) sauce CHOU avec BOEUF': 3600,
-        'AKOUME(PATE MAIS) sauce CHOU avec MOUTON': 3600,
-        'AKOUME(PATE MAIS) sauce CHOU avec AKPAMA(PEAU DE BOEUF)': 3100,
-        'AKOUME(PATE MAIS) sauce CHOU avec AGLAN(CRABE)': 3100, 'AKOUME(PATE MAIS) sauce CHOU avec CREVETTE': 3100,
-        'AKOUME(PATE MAIS) sauce FETRI POUPOU(GONBO SEC) avec RIEN ': 1850,
-        'AKOUME(PATE MAIS) sauce FETRI POUPOU(GONBO SEC) avec AKPALAN(POISSON FUME)': 2350,
-        'AKOUME(PATE MAIS) sauce FETRI POUPOU(GONBO SEC) avec DEUEVI(PETIT POISSON)': 2050,
-        'AKOUME(PATE MAIS) sauce FETRI POUPOU(GONBO SEC) avec APKALAN KANAMI(POISSON FRIT)': 2150,
-        'AKOUME(PATE MAIS) sauce FETRI POUPOU(GONBO SEC) avec POULET': 2350,
-        'AKOUME(PATE MAIS) sauce FETRI POUPOU(GONBO SEC) avec BOEUF': 2850,
-        'AKOUME(PATE MAIS) sauce FETRI POUPOU(GONBO SEC) avec MOUTON': 2850,
-        'AKOUME(PATE MAIS) sauce FETRI POUPOU(GONBO SEC) avec AKPAMA(PEAU DE BOEUF)': 2350,
-        'AKOUME(PATE MAIS) sauce FETRI POUPOU(GONBO SEC) avec AGLAN(CRABE)': 2350,
-        'AKOUME(PATE MAIS) sauce FETRI POUPOU(GONBO SEC) avec CREVETTE': 2350,
-        'AKOUME(PATE MAIS) sauce DEKOU(GRAINE) avec RIEN ': 2500,
-        'AKOUME(PATE MAIS) sauce DEKOU(GRAINE) avec AKPALAN(POISSON FUME)': 3000,
-        'AKOUME(PATE MAIS) sauce DEKOU(GRAINE) avec DEUEVI(PETIT POISSON)': 2700,
-        'AKOUME(PATE MAIS) sauce DEKOU(GRAINE) avec APKALAN KANAMI(POISSON FRIT)': 2800,
-        'AKOUME(PATE MAIS) sauce DEKOU(GRAINE) avec POULET': 3000,
-        'AKOUME(PATE MAIS) sauce DEKOU(GRAINE) avec BOEUF': 3500,
-        'AKOUME(PATE MAIS) sauce DEKOU(GRAINE) avec MOUTON': 3500,
-        'AKOUME(PATE MAIS) sauce DEKOU(GRAINE) avec AKPAMA(PEAU DE BOEUF)': 3000,
-        'AKOUME(PATE MAIS) sauce DEKOU(GRAINE) avec AGLAN(CRABE)': 3000,
-        'AKOUME(PATE MAIS) sauce DEKOU(GRAINE) avec CREVETTE': 3000,
-        'AKOUME(PATE MAIS) sauce EBESSESSI avec RIEN ': 1550,
-        'AKOUME(PATE MAIS) sauce EBESSESSI avec AKPALAN(POISSON FUME)': 2050,
-        'AKOUME(PATE MAIS) sauce EBESSESSI avec DEUEVI(PETIT POISSON)': 1750,
-        'AKOUME(PATE MAIS) sauce EBESSESSI avec APKALAN KANAMI(POISSON FRIT)': 1850,
-        'AKOUME(PATE MAIS) sauce EBESSESSI avec POULET': 2050, 'AKOUME(PATE MAIS) sauce EBESSESSI avec BOEUF': 2550,
-        'AKOUME(PATE MAIS) sauce EBESSESSI avec MOUTON': 2550,
-        'AKOUME(PATE MAIS) sauce EBESSESSI avec AKPAMA(PEAU DE BOEUF)': 2050,
-        'AKOUME(PATE MAIS) sauce EBESSESSI avec AGLAN(CRABE)': 2050,
-        'AKOUME(PATE MAIS) sauce EBESSESSI avec CREVETTE': 2050,
-        'EMAKUME(PATE MAIS FERMENTE) sauce GBOMA avec RIEN ': 2700,
-        'EMAKUME(PATE MAIS FERMENTE) sauce GBOMA avec AKPALAN(POISSON FUME)': 3200,
-        'EMAKUME(PATE MAIS FERMENTE) sauce GBOMA avec DEUEVI(PETIT POISSON)': 2900,
-        'EMAKUME(PATE MAIS FERMENTE) sauce GBOMA avec APKALAN KANAMI(POISSON FRIT)': 3000,
-        'EMAKUME(PATE MAIS FERMENTE) sauce GBOMA avec POULET': 3200,
-        'EMAKUME(PATE MAIS FERMENTE) sauce GBOMA avec BOEUF': 3700,
-        'EMAKUME(PATE MAIS FERMENTE) sauce GBOMA avec MOUTON': 3700,
-        'EMAKUME(PATE MAIS FERMENTE) sauce GBOMA avec AKPAMA(PEAU DE BOEUF)': 3200,
-        'EMAKUME(PATE MAIS FERMENTE) sauce GBOMA avec AGLAN(CRABE)': 3200,
-        'EMAKUME(PATE MAIS FERMENTE) sauce GBOMA avec CREVETTE': 3200,
-        'EMAKUME(PATE MAIS FERMENTE) sauce TOMATE avec RIEN ': 2400,
-        'EMAKUME(PATE MAIS FERMENTE) sauce TOMATE avec AKPALAN(POISSON FUME)': 2900,
-        'EMAKUME(PATE MAIS FERMENTE) sauce TOMATE avec DEUEVI(PETIT POISSON)': 2600,
-        'EMAKUME(PATE MAIS FERMENTE) sauce TOMATE avec APKALAN KANAMI(POISSON FRIT)': 2700,
-        'EMAKUME(PATE MAIS FERMENTE) sauce TOMATE avec POULET': 2900,
-        'EMAKUME(PATE MAIS FERMENTE) sauce TOMATE avec BOEUF': 3400,
-        'EMAKUME(PATE MAIS FERMENTE) sauce TOMATE avec MOUTON': 3400,
-        'EMAKUME(PATE MAIS FERMENTE) sauce TOMATE avec AKPAMA(PEAU DE BOEUF)': 2900,
-        'EMAKUME(PATE MAIS FERMENTE) sauce TOMATE avec AGLAN(CRABE)': 2900,
-        'EMAKUME(PATE MAIS FERMENTE) sauce TOMATE avec CREVETTE': 2900,
-        'EMAKUME(PATE MAIS FERMENTE) sauce GOUSSI avec RIEN ': 2400,
-        'EMAKUME(PATE MAIS FERMENTE) sauce GOUSSI avec AKPALAN(POISSON FUME)': 2900,
-        'EMAKUME(PATE MAIS FERMENTE) sauce GOUSSI avec DEUEVI(PETIT POISSON)': 2600,
-        'EMAKUME(PATE MAIS FERMENTE) sauce GOUSSI avec APKALAN KANAMI(POISSON FRIT)': 2700,
-        'EMAKUME(PATE MAIS FERMENTE) sauce GOUSSI avec POULET': 2900,
-        'EMAKUME(PATE MAIS FERMENTE) sauce GOUSSI avec BOEUF': 3400,
-        'EMAKUME(PATE MAIS FERMENTE) sauce GOUSSI avec MOUTON': 3400,
-        'EMAKUME(PATE MAIS FERMENTE) sauce GOUSSI avec AKPAMA(PEAU DE BOEUF)': 2900,
-        'EMAKUME(PATE MAIS FERMENTE) sauce GOUSSI avec AGLAN(CRABE)': 2900,
-        'EMAKUME(PATE MAIS FERMENTE) sauce GOUSSI avec CREVETTE': 2900,
-        'EMAKUME(PATE MAIS FERMENTE) sauce ADEME avec RIEN ': 2200,
-        'EMAKUME(PATE MAIS FERMENTE) sauce ADEME avec AKPALAN(POISSON FUME)': 2700,
-        'EMAKUME(PATE MAIS FERMENTE) sauce ADEME avec DEUEVI(PETIT POISSON)': 2400,
-        'EMAKUME(PATE MAIS FERMENTE) sauce ADEME avec APKALAN KANAMI(POISSON FRIT)': 2500,
-        'EMAKUME(PATE MAIS FERMENTE) sauce ADEME avec POULET': 2700,
-        'EMAKUME(PATE MAIS FERMENTE) sauce ADEME avec BOEUF': 3200,
-        'EMAKUME(PATE MAIS FERMENTE) sauce ADEME avec MOUTON': 3200,
-        'EMAKUME(PATE MAIS FERMENTE) sauce ADEME avec AKPAMA(PEAU DE BOEUF)': 2700,
-        'EMAKUME(PATE MAIS FERMENTE) sauce ADEME avec AGLAN(CRABE)': 2700,
-        'EMAKUME(PATE MAIS FERMENTE) sauce ADEME avec CREVETTE': 2700,
-        'EMAKUME(PATE MAIS FERMENTE) sauce FETRI(GOMBO) avec RIEN ': 1900,
-        'EMAKUME(PATE MAIS FERMENTE) sauce FETRI(GOMBO) avec AKPALAN(POISSON FUME)': 2400,
-        'EMAKUME(PATE MAIS FERMENTE) sauce FETRI(GOMBO) avec DEUEVI(PETIT POISSON)': 2100,
-        'EMAKUME(PATE MAIS FERMENTE) sauce FETRI(GOMBO) avec APKALAN KANAMI(POISSON FRIT)': 2200,
-        'EMAKUME(PATE MAIS FERMENTE) sauce FETRI(GOMBO) avec POULET': 2400,
-        'EMAKUME(PATE MAIS FERMENTE) sauce FETRI(GOMBO) avec BOEUF': 2900,
-        'EMAKUME(PATE MAIS FERMENTE) sauce FETRI(GOMBO) avec MOUTON': 2900,
-        'EMAKUME(PATE MAIS FERMENTE) sauce FETRI(GOMBO) avec AKPAMA(PEAU DE BOEUF)': 2400,
-        'EMAKUME(PATE MAIS FERMENTE) sauce FETRI(GOMBO) avec AGLAN(CRABE)': 2400,
-        'EMAKUME(PATE MAIS FERMENTE) sauce FETRI(GOMBO) avec CREVETTE': 2400,
-        'EMAKUME(PATE MAIS FERMENTE) sauce KODORO avec RIEN ': 2000,
-        'EMAKUME(PATE MAIS FERMENTE) sauce KODORO avec AKPALAN(POISSON FUME)': 2500,
-        'EMAKUME(PATE MAIS FERMENTE) sauce KODORO avec DEUEVI(PETIT POISSON)': 2200,
-        'EMAKUME(PATE MAIS FERMENTE) sauce KODORO avec APKALAN KANAMI(POISSON FRIT)': 2300,
-        'EMAKUME(PATE MAIS FERMENTE) sauce KODORO avec POULET': 2500,
-        'EMAKUME(PATE MAIS FERMENTE) sauce KODORO avec BOEUF': 3000,
-        'EMAKUME(PATE MAIS FERMENTE) sauce KODORO avec MOUTON': 3000,
-        'EMAKUME(PATE MAIS FERMENTE) sauce KODORO avec AKPAMA(PEAU DE BOEUF)': 2500,
-        'EMAKUME(PATE MAIS FERMENTE) sauce KODORO avec AGLAN(CRABE)': 2500,
-        'EMAKUME(PATE MAIS FERMENTE) sauce KODORO avec CREVETTE': 2500,
-        'EMAKUME(PATE MAIS FERMENTE) sauce GNATOU avec RIEN ': 2300,
-        'EMAKUME(PATE MAIS FERMENTE) sauce GNATOU avec AKPALAN(POISSON FUME)': 2800,
-        'EMAKUME(PATE MAIS FERMENTE) sauce GNATOU avec DEUEVI(PETIT POISSON)': 2500,
-        'EMAKUME(PATE MAIS FERMENTE) sauce GNATOU avec APKALAN KANAMI(POISSON FRIT)': 2600,
-        'EMAKUME(PATE MAIS FERMENTE) sauce GNATOU avec POULET': 2800,
-        'EMAKUME(PATE MAIS FERMENTE) sauce GNATOU avec BOEUF': 3300,
-        'EMAKUME(PATE MAIS FERMENTE) sauce GNATOU avec MOUTON': 3300,
-        'EMAKUME(PATE MAIS FERMENTE) sauce GNATOU avec AKPAMA(PEAU DE BOEUF)': 2800,
-        'EMAKUME(PATE MAIS FERMENTE) sauce GNATOU avec AGLAN(CRABE)': 2800,
-        'EMAKUME(PATE MAIS FERMENTE) sauce GNATOU avec CREVETTE': 2800,
-        'EMAKUME(PATE MAIS FERMENTE) sauce ARACHIDE avec RIEN ': 2250,
-        'EMAKUME(PATE MAIS FERMENTE) sauce ARACHIDE avec AKPALAN(POISSON FUME)': 2750,
-        'EMAKUME(PATE MAIS FERMENTE) sauce ARACHIDE avec DEUEVI(PETIT POISSON)': 2450,
-        'EMAKUME(PATE MAIS FERMENTE) sauce ARACHIDE avec APKALAN KANAMI(POISSON FRIT)': 2550,
-        'EMAKUME(PATE MAIS FERMENTE) sauce ARACHIDE avec POULET': 2750,
-        'EMAKUME(PATE MAIS FERMENTE) sauce ARACHIDE avec BOEUF': 3250,
-        'EMAKUME(PATE MAIS FERMENTE) sauce ARACHIDE avec MOUTON': 3250,
-        'EMAKUME(PATE MAIS FERMENTE) sauce ARACHIDE avec AKPAMA(PEAU DE BOEUF)': 2750,
-        'EMAKUME(PATE MAIS FERMENTE) sauce ARACHIDE avec AGLAN(CRABE)': 2750,
-        'EMAKUME(PATE MAIS FERMENTE) sauce ARACHIDE avec CREVETTE': 2750,
-        'EMAKUME(PATE MAIS FERMENTE) sauce CHOU avec RIEN ': 2800,
-        'EMAKUME(PATE MAIS FERMENTE) sauce CHOU avec AKPALAN(POISSON FUME)': 3300,
-        'EMAKUME(PATE MAIS FERMENTE) sauce CHOU avec DEUEVI(PETIT POISSON)': 3000,
-        'EMAKUME(PATE MAIS FERMENTE) sauce CHOU avec APKALAN KANAMI(POISSON FRIT)': 3100,
-        'EMAKUME(PATE MAIS FERMENTE) sauce CHOU avec POULET': 3300,
-        'EMAKUME(PATE MAIS FERMENTE) sauce CHOU avec BOEUF': 3800,
-        'EMAKUME(PATE MAIS FERMENTE) sauce CHOU avec MOUTON': 3800,
-        'EMAKUME(PATE MAIS FERMENTE) sauce CHOU avec AKPAMA(PEAU DE BOEUF)': 3300,
-        'EMAKUME(PATE MAIS FERMENTE) sauce CHOU avec AGLAN(CRABE)': 3300,
-        'EMAKUME(PATE MAIS FERMENTE) sauce CHOU avec CREVETTE': 3300,
-        'EMAKUME(PATE MAIS FERMENTE) sauce FETRI POUPOU(GONBO SEC) avec RIEN ': 2050,
-        'EMAKUME(PATE MAIS FERMENTE) sauce FETRI POUPOU(GONBO SEC) avec AKPALAN(POISSON FUME)': 2550,
-        'EMAKUME(PATE MAIS FERMENTE) sauce FETRI POUPOU(GONBO SEC) avec DEUEVI(PETIT POISSON)': 2250,
-        'EMAKUME(PATE MAIS FERMENTE) sauce FETRI POUPOU(GONBO SEC) avec APKALAN KANAMI(POISSON FRIT)': 2350,
-        'EMAKUME(PATE MAIS FERMENTE) sauce FETRI POUPOU(GONBO SEC) avec POULET': 2550,
-        'EMAKUME(PATE MAIS FERMENTE) sauce FETRI POUPOU(GONBO SEC) avec BOEUF': 3050,
-        'EMAKUME(PATE MAIS FERMENTE) sauce FETRI POUPOU(GONBO SEC) avec MOUTON': 3050,
-        'EMAKUME(PATE MAIS FERMENTE) sauce FETRI POUPOU(GONBO SEC) avec AKPAMA(PEAU DE BOEUF)': 2550,
-        'EMAKUME(PATE MAIS FERMENTE) sauce FETRI POUPOU(GONBO SEC) avec AGLAN(CRABE)': 2550,
-        'EMAKUME(PATE MAIS FERMENTE) sauce FETRI POUPOU(GONBO SEC) avec CREVETTE': 2550,
-        'EMAKUME(PATE MAIS FERMENTE) sauce DEKOU(GRAINE) avec RIEN ': 2700,
-        'EMAKUME(PATE MAIS FERMENTE) sauce DEKOU(GRAINE) avec AKPALAN(POISSON FUME)': 3200,
-        'EMAKUME(PATE MAIS FERMENTE) sauce DEKOU(GRAINE) avec DEUEVI(PETIT POISSON)': 2900,
-        'EMAKUME(PATE MAIS FERMENTE) sauce DEKOU(GRAINE) avec APKALAN KANAMI(POISSON FRIT)': 3000,
-        'EMAKUME(PATE MAIS FERMENTE) sauce DEKOU(GRAINE) avec POULET': 3200,
-        'EMAKUME(PATE MAIS FERMENTE) sauce DEKOU(GRAINE) avec BOEUF': 3700,
-        'EMAKUME(PATE MAIS FERMENTE) sauce DEKOU(GRAINE) avec MOUTON': 3700,
-        'EMAKUME(PATE MAIS FERMENTE) sauce DEKOU(GRAINE) avec AKPAMA(PEAU DE BOEUF)': 3200,
-        'EMAKUME(PATE MAIS FERMENTE) sauce DEKOU(GRAINE) avec AGLAN(CRABE)': 3200,
-        'EMAKUME(PATE MAIS FERMENTE) sauce DEKOU(GRAINE) avec CREVETTE': 3200,
-        'EMAKUME(PATE MAIS FERMENTE) sauce EBESSESSI avec RIEN ': 1750,
-        'EMAKUME(PATE MAIS FERMENTE) sauce EBESSESSI avec AKPALAN(POISSON FUME)': 2250,
-        'EMAKUME(PATE MAIS FERMENTE) sauce EBESSESSI avec DEUEVI(PETIT POISSON)': 1950,
-        'EMAKUME(PATE MAIS FERMENTE) sauce EBESSESSI avec APKALAN KANAMI(POISSON FRIT)': 2050,
-        'EMAKUME(PATE MAIS FERMENTE) sauce EBESSESSI avec POULET': 2250,
-        'EMAKUME(PATE MAIS FERMENTE) sauce EBESSESSI avec BOEUF': 2750,
-        'EMAKUME(PATE MAIS FERMENTE) sauce EBESSESSI avec MOUTON': 2750,
-        'EMAKUME(PATE MAIS FERMENTE) sauce EBESSESSI avec AKPAMA(PEAU DE BOEUF)': 2250,
-        'EMAKUME(PATE MAIS FERMENTE) sauce EBESSESSI avec AGLAN(CRABE)': 2250,
-        'EMAKUME(PATE MAIS FERMENTE) sauce EBESSESSI avec CREVETTE': 2250, 'Riz sauce GBOMA avec RIEN ': 2375,
-        'Riz sauce GBOMA avec AKPALAN(POISSON FUME)': 2875, 'Riz sauce GBOMA avec DEUEVI(PETIT POISSON)': 2575,
-        'Riz sauce GBOMA avec APKALAN KANAMI(POISSON FRIT)': 2675, 'Riz sauce GBOMA avec POULET': 2875,
-        'Riz sauce GBOMA avec BOEUF': 3375, 'Riz sauce GBOMA avec MOUTON': 3375,
-        'Riz sauce GBOMA avec AKPAMA(PEAU DE BOEUF)': 2875, 'Riz sauce GBOMA avec AGLAN(CRABE)': 2875,
-        'Riz sauce GBOMA avec CREVETTE': 2875, 'Riz sauce TOMATE avec RIEN ': 2075,
-        'Riz sauce TOMATE avec AKPALAN(POISSON FUME)': 2575, 'Riz sauce TOMATE avec DEUEVI(PETIT POISSON)': 2275,
-        'Riz sauce TOMATE avec APKALAN KANAMI(POISSON FRIT)': 2375, 'Riz sauce TOMATE avec POULET': 2575,
-        'Riz sauce TOMATE avec BOEUF': 3075, 'Riz sauce TOMATE avec MOUTON': 3075,
-        'Riz sauce TOMATE avec AKPAMA(PEAU DE BOEUF)': 2575, 'Riz sauce TOMATE avec AGLAN(CRABE)': 2575,
-        'Riz sauce TOMATE avec CREVETTE': 2575, 'Riz sauce GOUSSI avec RIEN ': 2075,
-        'Riz sauce GOUSSI avec AKPALAN(POISSON FUME)': 2575, 'Riz sauce GOUSSI avec DEUEVI(PETIT POISSON)': 2275,
-        'Riz sauce GOUSSI avec APKALAN KANAMI(POISSON FRIT)': 2375, 'Riz sauce GOUSSI avec POULET': 2575,
-        'Riz sauce GOUSSI avec BOEUF': 3075, 'Riz sauce GOUSSI avec MOUTON': 3075,
-        'Riz sauce GOUSSI avec AKPAMA(PEAU DE BOEUF)': 2575, 'Riz sauce GOUSSI avec AGLAN(CRABE)': 2575,
-        'Riz sauce GOUSSI avec CREVETTE': 2575, 'Riz sauce ADEME avec RIEN ': 1875,
-        'Riz sauce ADEME avec AKPALAN(POISSON FUME)': 2375, 'Riz sauce ADEME avec DEUEVI(PETIT POISSON)': 2075,
-        'Riz sauce ADEME avec APKALAN KANAMI(POISSON FRIT)': 2175, 'Riz sauce ADEME avec POULET': 2375,
-        'Riz sauce ADEME avec BOEUF': 2875, 'Riz sauce ADEME avec MOUTON': 2875,
-        'Riz sauce ADEME avec AKPAMA(PEAU DE BOEUF)': 2375, 'Riz sauce ADEME avec AGLAN(CRABE)': 2375,
-        'Riz sauce ADEME avec CREVETTE': 2375, 'Riz sauce FETRI(GOMBO) avec RIEN ': 1575,
-        'Riz sauce FETRI(GOMBO) avec AKPALAN(POISSON FUME)': 2075,
-        'Riz sauce FETRI(GOMBO) avec DEUEVI(PETIT POISSON)': 1775,
-        'Riz sauce FETRI(GOMBO) avec APKALAN KANAMI(POISSON FRIT)': 1875, 'Riz sauce FETRI(GOMBO) avec POULET': 2075,
-        'Riz sauce FETRI(GOMBO) avec BOEUF': 2575, 'Riz sauce FETRI(GOMBO) avec MOUTON': 2575,
-        'Riz sauce FETRI(GOMBO) avec AKPAMA(PEAU DE BOEUF)': 2075, 'Riz sauce FETRI(GOMBO) avec AGLAN(CRABE)': 2075,
-        'Riz sauce FETRI(GOMBO) avec CREVETTE': 2075, 'Riz sauce KODORO avec RIEN ': 1675,
-        'Riz sauce KODORO avec AKPALAN(POISSON FUME)': 2175, 'Riz sauce KODORO avec DEUEVI(PETIT POISSON)': 1875,
-        'Riz sauce KODORO avec APKALAN KANAMI(POISSON FRIT)': 1975, 'Riz sauce KODORO avec POULET': 2175,
-        'Riz sauce KODORO avec BOEUF': 2675, 'Riz sauce KODORO avec MOUTON': 2675,
-        'Riz sauce KODORO avec AKPAMA(PEAU DE BOEUF)': 2175, 'Riz sauce KODORO avec AGLAN(CRABE)': 2175,
-        'Riz sauce KODORO avec CREVETTE': 2175, 'Riz sauce GNATOU avec RIEN ': 1975,
-        'Riz sauce GNATOU avec AKPALAN(POISSON FUME)': 2475, 'Riz sauce GNATOU avec DEUEVI(PETIT POISSON)': 2175,
-        'Riz sauce GNATOU avec APKALAN KANAMI(POISSON FRIT)': 2275, 'Riz sauce GNATOU avec POULET': 2475,
-        'Riz sauce GNATOU avec BOEUF': 2975, 'Riz sauce GNATOU avec MOUTON': 2975,
-        'Riz sauce GNATOU avec AKPAMA(PEAU DE BOEUF)': 2475, 'Riz sauce GNATOU avec AGLAN(CRABE)': 2475,
-        'Riz sauce GNATOU avec CREVETTE': 2475, 'Riz sauce ARACHIDE avec RIEN ': 1925,
-        'Riz sauce ARACHIDE avec AKPALAN(POISSON FUME)': 2425, 'Riz sauce ARACHIDE avec DEUEVI(PETIT POISSON)': 2125,
-        'Riz sauce ARACHIDE avec APKALAN KANAMI(POISSON FRIT)': 2225, 'Riz sauce ARACHIDE avec POULET': 2425,
-        'Riz sauce ARACHIDE avec BOEUF': 2925, 'Riz sauce ARACHIDE avec MOUTON': 2925,
-        'Riz sauce ARACHIDE avec AKPAMA(PEAU DE BOEUF)': 2425, 'Riz sauce ARACHIDE avec AGLAN(CRABE)': 2425,
-        'Riz sauce ARACHIDE avec CREVETTE': 2425, 'Riz sauce CHOU avec RIEN ': 2475,
-        'Riz sauce CHOU avec AKPALAN(POISSON FUME)': 2975, 'Riz sauce CHOU avec DEUEVI(PETIT POISSON)': 2675,
-        'Riz sauce CHOU avec APKALAN KANAMI(POISSON FRIT)': 2775, 'Riz sauce CHOU avec POULET': 2975,
-        'Riz sauce CHOU avec BOEUF': 3475, 'Riz sauce CHOU avec MOUTON': 3475,
-        'Riz sauce CHOU avec AKPAMA(PEAU DE BOEUF)': 2975, 'Riz sauce CHOU avec AGLAN(CRABE)': 2975,
-        'Riz sauce CHOU avec CREVETTE': 2975, 'Riz sauce FETRI POUPOU(GONBO SEC) avec RIEN ': 1725,
-        'Riz sauce FETRI POUPOU(GONBO SEC) avec AKPALAN(POISSON FUME)': 2225,
-        'Riz sauce FETRI POUPOU(GONBO SEC) avec DEUEVI(PETIT POISSON)': 1925,
-        'Riz sauce FETRI POUPOU(GONBO SEC) avec APKALAN KANAMI(POISSON FRIT)': 2025,
-        'Riz sauce FETRI POUPOU(GONBO SEC) avec POULET': 2225, 'Riz sauce FETRI POUPOU(GONBO SEC) avec BOEUF': 2725,
-        'Riz sauce FETRI POUPOU(GONBO SEC) avec MOUTON': 2725,
-        'Riz sauce FETRI POUPOU(GONBO SEC) avec AKPAMA(PEAU DE BOEUF)': 2225,
-        'Riz sauce FETRI POUPOU(GONBO SEC) avec AGLAN(CRABE)': 2225,
-        'Riz sauce FETRI POUPOU(GONBO SEC) avec CREVETTE': 2225, 'Riz sauce DEKOU(GRAINE) avec RIEN ': 2375,
-        'Riz sauce DEKOU(GRAINE) avec AKPALAN(POISSON FUME)': 2875,
-        'Riz sauce DEKOU(GRAINE) avec DEUEVI(PETIT POISSON)': 2575,
-        'Riz sauce DEKOU(GRAINE) avec APKALAN KANAMI(POISSON FRIT)': 2675, 'Riz sauce DEKOU(GRAINE) avec POULET': 2875,
-        'Riz sauce DEKOU(GRAINE) avec BOEUF': 3375, 'Riz sauce DEKOU(GRAINE) avec MOUTON': 3375,
-        'Riz sauce DEKOU(GRAINE) avec AKPAMA(PEAU DE BOEUF)': 2875, 'Riz sauce DEKOU(GRAINE) avec AGLAN(CRABE)': 2875,
-        'Riz sauce DEKOU(GRAINE) avec CREVETTE': 2875, 'Riz sauce EBESSESSI avec RIEN ': 1425,
-        'Riz sauce EBESSESSI avec AKPALAN(POISSON FUME)': 1925, 'Riz sauce EBESSESSI avec DEUEVI(PETIT POISSON)': 1625,
-        'Riz sauce EBESSESSI avec APKALAN KANAMI(POISSON FRIT)': 1725, 'Riz sauce EBESSESSI avec POULET': 1925,
-        'Riz sauce EBESSESSI avec BOEUF': 2425, 'Riz sauce EBESSESSI avec MOUTON': 2425,
-        'Riz sauce EBESSESSI avec AKPAMA(PEAU DE BOEUF)': 1925, 'Riz sauce EBESSESSI avec AGLAN(CRABE)': 1925,
-        'Riz sauce EBESSESSI avec CREVETTE': 1925, 'DEGUE': 1500, 'TAPIOCA ZOGBON': 1325, 'ATTIEKE POISSON': 1600,
-        'SPAGHETTI BLANC': 800, 'SALADE': 3975, 'HARICO HUIL ROUGE': 1525, 'HARICO HUIL ARACHIDE': 1375}
-
-lis3 = {}
-bases2a1 = {
-    "TEKON(IGNAME BOULLIE)": {"igname": 1500, "sel": 25},
-    "ABLO": {
-        "farine de mais": 900,
-        "farine de riz": 900,
-        "sucre": 300,
-        "sel": 25,
-        "levure boulanger": 500
-    },
-    "DJINKOUME": {"farine mais": 900},
-    "COUSCOUS": {"couscou": 1200, "huil": 300, "sel": 25},
-    "KOLIKO": {"igname": 1500, "huil": 300, "sel": 25},
-    "TIMBANI": {"haricos": 500, "sel": 25},
-    "RIZ": {"riz": 750, "sel": 25},
-    "AMANDA(ALLOCO)": {"bananes plantain": 1000, "huil": 300, "sel": 25},
-    "AYIMOLOU": {"haricot": 500, "riz": 750, "potasse": 50},
-    "SPAGHETTI": {"spaghetti": 350, "sel": 25}
+# --- 2. CALCUL DES COÛTS UNITAIRES TOGOLAIS ---
+lisa={}#------------------------------------------------------------------------------------------------------
+#generateur 4-8
+#-------------------------------------------------------------------------------------------------------------------------
+basesa ={"TEKON(IGNAME BOULLIE)":3,"ABLO":5000,"DJINKOUME":20000,"COUSCOUS":5000,"KOLIKO":1000,"TIMBANI":1500,"RIZ":700,"AMANDA(ALLOCO)":2000,"AYIMOLOU":1000,"SPAGHETTI":500}
+proteinesa={"AKPALAN(POISSON FUME)":10,"DEUEVI(PETIT POISSON)":10,"APKALAN KANAMI(POISSON FRIT)":10,"POULET":10,"BOEUF":10,"MOUTON":10,"AKPAME(PEAU DE BOEUF)":10,"AGLAN(CRABE)":10,"CREVETTE":10}
+saucesa={"TOMATE":500,}
+bases2a ={"FOUFOU IGNAME":1500,"FOUFOU PLANTAIN":1800,"AKOUME(PATE MAIS)":1700,"EMAKUME(PATE MAIS FERMENTE)":1800,"Riz":1000}
+proteines2a={"AKPALAN(POISSON FUME)":10,"DEUEVI(PETIT POISSON)":10,"APKALAN KANAMI(POISSON FRIT)":10,"POULET":10,"BOEUF":10,"MOUTON":10,"AKPAME(PEAU DE BOEUF)":10,"AGLAN(CRABE)":10,"CREVETTE":10}
+sauces2a={"GBOMA":1500,"TOMATE":100,"GOUSSI":510,"ADEME":810,"FETRI(GOMBO)":410,"KODORO":610,"GNATOU":110,"ARACHIDE":210,"CHOU":310,"FETRI POUPOU(GONBO SEC)":410,"DEKOU(GRAINE)":510,"EBESSESSI":610,}
+dicsa={
+    "DEGUE":1000,"TAPIOCA ZOGBON":1000,"ATTIEKE POISSON":1000,"SPAGHETTI BLANC":1000,"SALADE":1000
 }
-proteines2a1 = {
-    "RIEN ": {},
-    "AKPALAN(POISSON FUME)": {"AKPALAN(POISSON FUME)": 500},
-    "DEUEVI(PETIT POISSON)": {"DEUEVI(PETIT POISSON)": 200},
-    "APKALAN KANAMI(POISSON FRIT)": {"APKALAN KANAMI(POISSON FRIT)": 300},
-    "POULET": {"VIANDE DE POULET": 500},
-    "BOEUF": {"VIANDE DE BOEUF": 1000},
-    "MOUTON": {"VIANDE DE MOUTON": 1000},
-    "AKPAMA(PEAU DE BOEUF)": {"AKPAMA(PEAU DE BOEUF)": 500},
-    "AGLAN(CRABE)": {"AGLAN(CRABE)": 500},
-    "CREVETTE": {"CREVETTE": 500}
+lisa.update(dicsa)
+combinaisons=list(itertools.product(basesa.keys(),proteinesa.keys(),saucesa.keys()))
+combinaisons2=list(itertools.product(bases2a.keys(),proteines2a.keys(),sauces2a.keys()))
+
+def afficfer(combia):
+    basesa,proteinesa,saucesa = combia
+def afficfer2(combi2a):
+    base2a,proteine2a,sauce2a = combi2a
+
+for combia in combinaisons:
+    afficfer(combia)
+    noma=f"{combia[0]} Sauce {combia[2]} avec {combia[1]}"
+    valeura=basesa[combia[0]]+proteinesa[combia[1]]+saucesa[combia[2]]
+    lisa[noma]= int(valeura)
+for combi2a in combinaisons2:
+    afficfer2(combi2a)
+    nom2a = f"{combi2a[0]} Sauce {combi2a[2]} avec {combi2a[1]}"
+    valeur2a = bases2a[combi2a[0]] + proteines2a[combi2a[1]] + sauces2a[combi2a[2]]
+    lisa[nom2a] = int(valeur2a)
+
+#---------------------------------------------------------------------------------------------
+#generateur 1-3
+#---------------------------------------------------------------------------------------------
+lis={}
+bases2 ={"TEKON(IGNAME BOULLIE)":3,"ABLO":5000,"DJINKOUME":20000,"COUSCOUS":5000,"KOLIKO":1000,"TIMBANI":1500,"RIZ":700,"AMANDA(ALLOCO)":2000,"AYIMOLOU":1000,"SPAGHETTI":500}
+proteines2={"AKPALAN(POISSON FUME)":10,"DEUEVI(PETIT POISSON)":10,"APKALAN KANAMI(POISSON FRIT)":10,"POULET":10,"BOEUF":10,"MOUTON":10,"AKPAME(PEAU DE BOEUF)":10,"AGLAN(CRABE)":10,"CREVETTE":10}
+sauces2={"TOMATE":500,}
+bases={"FOUFOU IGNAME":1500,"FOUFOU PLANTAIN":1800,"AKOUME(PATE MAIS)":1700,"EMAKUME(PATE MAIS FERMENTE)":1800,"Riz":1000}
+proteines={"AKPALAN(POISSON FUME)":10,"DEUEVI(PETIT POISSON)":10,"APKALAN KANAMI(POISSON FRIT)":10,"POULET":10,"BOEUF":10,"MOUTON":10,"AKPAME(PEAU DE BOEUF)":10,"AGLAN(CRABE)":10,"CREVETTE":10}
+sauces={"GBOMA":1500,"TOMATE":100,"GOUSSI":510,"ADEME":810,"FETRI(GOMBO)":410,"KODORO":610,"GNATOU":110,"ARACHIDE":210,"CHOU":310,"FETRI POUPOU(GONBO SEC)":410,"DEKOU(GRAINE)":510,"EBESSESSI":610,}
+dic={
+    "DEGUE":1000,"TAPIOCA ZOGBON":1000,"ATTIEKE POISSON":1000,"SPAGHETTI BLANC":1000,"SALADE":1000
 }
-sauces2a1 = {
-    "TOMATE": {
-        "TOMATE FRAIS": 200,
-        "TOMATE CONCENTRE": 250,
-        "HUIL VEGETAL": 300,
-        "OIGNON": 100,
-        "CUBE": 25,
-        "SEL": 25,
-        "AIL": 50,
-        "PIMENT FRAIS": 100,
-        "PIMENT EN POUDRE": 100,
-        "POTASE": 50
-    }
+lis.update(dic)
+combinaisons=list(itertools.product(bases.keys(),proteines.keys(),sauces.keys()))
+combinaisons2=list(itertools.product(bases2.keys(),proteines2.keys(),sauces2.keys()))
+
+def afficfer(combi):
+    bases,proteines,sauces = combi
+def afficfer2(combi2):
+    bases2,proteines2,sauces2 = combi2
+
+for combi in combinaisons:
+    afficfer(combi)
+    nom=f"{combi[0]} Sauce {combi[2]} avec {combi[1]}"
+    valeur=bases[combi[0]]+proteines[combi[1]]+sauces[combi[2]]
+    lis[nom]=valeur
+for combi2 in combinaisons2:
+    afficfer2(combi2)
+    nom2 = f"{combi2[0]} Sauce {combi2[2]} avec {combi2[1]}"
+    valeur2 = bases2[combi2[0]] + proteines2[combi2[1]] + sauces2[combi2[2]]
+    lis[nom2] = valeur2
+#----------------------------------------------------------------
+#generer
+liss={}
+bases2s ={"TEKON(IGNAME BOULLIE)":3,"ABLO":5000,"DJINKOUME":20000,"COUSCOUS":5000,"KOLIKO":1000,"TIMBANI":1500,"RIZ":700,"AMANDA(ALLOCO)":2000,"AYIMOLOU":1000,"SPAGHETTI":500}
+proteines2s={"AKPALAN(POISSON FUME)":10,"DEUEVI(PETIT POISSON)":10,"APKALAN KANAMI(POISSON FRIT)":10,"POULET":10,"BOEUF":10,"MOUTON":10,"AKPAME(PEAU DE BOEUF)":10,"AGLAN(CRABE)":10,"CREVETTE":10}
+sauces2s={"TOMATE":500,}
+basess ={"FOUFOU IGNAME":1500,"FOUFOU PLANTAIN":1800,"AKOUME(PATE MAIS)":1700,"EMAKUME(PATE MAIS FERMENTE)":1800,"Riz":1000}
+proteiness={"AKPALAN(POISSON FUME)":10,"DEUEVI(PETIT POISSON)":10,"APKALAN KANAMI(POISSON FRIT)":10,"POULET":10,"BOEUF":10,"MOUTON":10,"AKPAME(PEAU DE BOEUF)":10,"AGLAN(CRABE)":10,"CREVETTE":10}
+saucess={"GBOMA":1500,"TOMATE":100,"GOUSSI":510,"ADEME":810,"FETRI(GOMBO)":410,"KODORO":610,"GNATOU":110,"ARACHIDE":210,"CHOU":310,"FETRI POUPOU(GONBO SEC)":410,"DEKOU(GRAINE)":510,"EBESSESSI":610,}
+dics={
+    "DEGUE":1000,"TAPIOCA ZOGBON":1000,"ATTIEKE POISSON":1000,"SPAGHETTI BLANC":1000,"SALADE":1000
 }
-basesa1 = {
-    "FOUFOU IGNAME": {"igname": 2000, "sel": 25},
-    "FOUFOU PLANTAIN": {"bananas plantains": 1000, "sel": 25},
-    "AKOUME(PATE MAIS)": {"Farine de mais": 900},
-    "EMAKUME(PATE MAIS FERMENTE)": {
-        "Farine de mais": 900,
-        "pate de mais fermenter": 200
-    },
-    "Riz": {"riz": 750, "sel": 25}
-}
-saucesa1 = {
-    "GBOMA": {
-        "oignon": 100,
-        "gingembre": 50,
-        " ail": 50,
-        "Tomate frais": 200,
-        "piment frais": 100,
-        "tomate concentre": 350,
-        "huil rouge": 200,
-        "sel": 25,
-        "feuille de gboma": 500,
-        "cube": 25
-    },
-    "TOMATE": {
-        "TOMATE FRAIS": 200,
-        "TOMATE CONCENTRE": 350,
-        "HUIL VEGETAL": 300,
-        "OIGNON": 100,
-        "CUBE": 25,
-        "SEL": 25,
-        "AIL": 50,
-        "PIMENT FRAIS": 100,
-        "PIMENT EN POUDRE": 100,
-        "POTASE": 50
-    },
-    "GOUSSI": {
-        "sel": 25,
-        "oignon": 100,
-        "Graine de courge": 500,
-        "tomate frais": 200,
-        "piment frais": 100,
-        "Tomate concentre": 350,
-        "cube": 25
-    },
-    "ADEME": {
-        "feuilles ademe": 400,
-        "gingembre": 50,
-        "oignon": 100,
-        "piment frais": 100,
-        "huile rouge": 200,
-        "sel": 25,
-        "potasse": 50,
-        "poisson fermente": 150,
-        "cube": 25
-    },
-    "FETRI(GOMBO)": {
-        "gombo": 300,
-        "tomate frais": 200,
-        "oignon": 100,
-        "piment frais": 100,
-        "sel": 25,
-        "gingembre": 50,
-        "cube": 25
-    },
-    "KODORO": {
-        "oignon": 100,
-        "gingembre": 100,
-        "ail": 50,
-        "piment frais": 100,
-        "sel": 25,
-        " Afiti": 100,
-        "Feuille de baobab": 400,
-        "cube": 25
-    },
-    "GNATOU": {
-        "Feuille de gnatou": 400,
-        "Huil rouge": 200,
-        "pate d´arachide": 200,
-        "piment frais": 100,
-        "oignon": 100,
-        "cube": 25,
-        "sel": 25,
-        "afiti": 100,
-        "ail": 50
-    },
-    "ARACHIDE": {
-        "oignon": 100,
-        "ail": 50,
-        "gingembre": 100,
-        "pate d´arachide": 200,
-        "tomate frais": 200,
-        "piment frais": 100,
-        "sel": 25,
-        "tomate concentre": 350,
-        "cube": 25
-    },
-    "CHOU": {
-        "TOMATE FRAIS": 200,
-        "TOMATE CONCENTRE": 350,
-        "HUIL VEGETAL": 300,
-        "OIGNON": 100,
-        "CUBE": 25,
-        "SEL": 25,
-        "AIL": 50,
-        "PIMENT FRAIS": 100,
-        "PIMENT EN POUDRE": 100,
-        "POTASE": 50,
-        "choux": 400
-    },
-    "FETRI POUPOU(GONBO SEC)": {
-        "gombo sec": 300,
-        "tomate frais": 200,
-        "oignon": 100,
-        "piment frais": 100,
-        "piment en poudre": 100,
-        "sel": 25,
-        "gingembre": 100,
-        "cube": 25
-    },
-    "DEKOU(GRAINE)": {
-        "gingembre": 100,
-        "oignon": 100,
-        "ail": 50,
-        "Sel": 25,
-        "tomate frais": 200,
-        "piment frais": 100,
-        "Noi de palme": 1000,
-        "cube": 25
-    },
-    "EBESSESSI": {
-        "piment frais": 100,
-        "oignon": 100,
-        "tomate": 300,
-        "sel": 25,
-        "gingembre": 100,
-        "cube": 25
-    }
-}
-dica1 = {
-    "DEGUE(ARACHIDE)": {
-        "lait": 500,
-        "couscous": 500,
-        "sucre": 100,
-        "glace": 100,
-        "arachide": 300
-    }, "DEGUE SIMPLE": {
-        "lait": 500,
-        "couscous": 500,
-        "sucre": 100,
-        "glace": 100,
-    },
-    "TAPIOCA ZOGBON": {
-        "tapioca": 500,
-        "sel": 25,
-        "sucre": 300,
-        "lait en poudre": 500
-    },
-    "ATTIEKE POISSON": {
-        "poisson frais": 500,
-        "attieke": 500,
-        "oignon": 100,
-        "ail": 50,
-        "piment frai": 100,
-        "huile d´arachide": 300,
-        "sel": 25,
-        "cube": 25
+liss.update(dic)
+combinaisonss=list(itertools.product(basess.keys(),proteiness.keys(),saucess.keys()))
+combinaisons2s=list(itertools.product(bases2s.keys(),proteines2s.keys(),sauces2s.keys()))
 
-    },
-    "SPAGHETTI BLANC": {"spagheti": 350, "sel": 25, "piment frais": 100, "huil": 300, "cube": 25, },
-    "SALADE": {
-        "Laitue": 300,
-        "Tomate": 200,
-        "oignon": 100,
-        "Beterave": 300,
-        "Carotte": 300,
-        "Concombre": 300,
-        "Mayonnaise": 500,
-        "cube": 25,
-        "sardine": 300,
-        "oeuf": 200,
-        "spagheti": 350,
-        "huil": 300,
-        "vinaigre": 500,
-        "pain": 300
-    },
-    "HARICO HUIL ROUGE ": {
-        "harico": 500,
-        "sel": 25,
-        "potasse": 50,
-        "oignon": 100,
-        "ail": 50,
-        "huil rouge": 500,
-        "Gari": 300
-    },
-    "HARICO HUIL ARACHIDE 1": {
-        "harico": 500,
-        "sel": 25,
-        "potasse": 100,
-        "oignon": 100,
-        "ail": 50,
-        "huil d´arachide": 300,
-        "Gari": 300
-    },
-    "HARICO HUIL ARACHIDE 2": {
-        "harico": 500,
-        "sel": 25,
-        "potasse": 50,
-        "oignon": 100,
-        "huil d´arachide": 300,
-        "Gari": 300
-    }
-}
+def afficfers(combis):
+    basess,proteiness,saucess = combis
+def afficfer2s(combi2s):
+    bases2s,proteines2s,sauces2s = combi2s
 
+for combis in combinaisonss:
+    afficfers(combis)
+    noms=f"{combis[0]} Sauce {combis[2]} avec {combis[1]}"
+    valeurs=basess[combis[0]]+proteiness[combis[1]]+saucess[combi[2]]
+    liss[noms]=valeurs
+for combi2s in combinaisons2s:
+    afficfer2s(combi2s)
+    nom2s = f"{combi2s[0]} Sauce {combi2s[2]} avec {combi2s[1]}"
+    valeur2s = bases2s[combi2s[0]] + proteines2s[combi2s[1]] + sauces2s[combi2s[2]]
+    liss[nom2s] = valeur2s
+#---------------------------------------------------------------------
 
-def calculer_tarifs(nb):
-    # --- Fonction de calcul universelle ---
-    def calculer_prix_total(base_dict, sauce_dict, prot_dict, nom_b, nom_s, nom_p):
-        p_base = sum(base_dict.get(nom_b, {}).values())
-        p_sauce = sum(sauce_dict.get(nom_s, {}).values())
-        p_prot = sum(prot_dict.get(nom_p, {}).values())
-        return p_base + p_sauce + p_prot
-
-    # --- 1. Traitement des combinaisons 2a1 (Bases 2a1 + Sauce Tomate + Protéines) ---
-    for plat in bases2a1:
-        for sauce in sauces2a1:
-            for prot in proteines2a1:
-                nom_complet = f"{plat} sauce {sauce} avec {prot}"
-                prix = calculer_prix_total(bases2a1, sauces2a1, proteines2a1, plat, sauce, prot)
-                lis1[nom_complet] = prix
-                lis2[nom_complet] = round((int(prix) / 3) * int(nb))
-
-    # --- 2. Traitement des combinaisons a1 (Bases a1 + Toutes Sauces a1 + Protéines) ---
-    for plat in basesa1:
-        for sauce in saucesa1:
-            for prot in proteines2a1:
-                nom_complet = f"{plat} sauce {sauce} avec {prot}"
-                prix = calculer_prix_total(basesa1, saucesa1, proteines2a1, plat, sauce, prot)
-                lis1[nom_complet] = prix
-                lis2[nom_complet] = round((int(prix) / 3) * int(nb))
-
-    # --- 3. Traitement des plats directs (dica1) ---
-    for plat, ingredients in dica1.items():
-        prix = sum(ingredients.values())
-        lis1[plat] = prix
-        lis2[plat] = round(prix / 3) * nb
-
-    # ---------------------------------------------------------------------
-
-
-PLATS_PETIT_COMITE = lis1
-PLATS_FAMILLE = lis2
+PLATS_PETIT_COMITE = lis
+PLATS_FAMILLE = lisa
+PLATS_GRANDE_TABLE = liss
+print(PLATS_FAMILLE)
+print(PLATS_PETIT_COMITE)
 
 # État de l'application
 state = {"plats_selectionnes": {}, "planning_genere": []}
@@ -1139,12 +326,10 @@ def initialiser_db():
 
 
 def get_active_dict(nb):
-    calculer_tarifs(nb)
     """Sélectionne dynamiquement le dictionnaire selon le nombre de convives."""
-    if nb <= 3:
-        return PLATS_PETIT_COMITE, "Solo/Duo"
-    elif nb > 3:
-        return PLATS_FAMILLE, "famille"
+    if nb <= 2: return PLATS_PETIT_COMITE, "Solo/Duo"
+    if 3 <= nb <= 6: return PLATS_FAMILLE, "Familiale"
+    return PLATS_GRANDE_TABLE, "Grand Groupe"
 
 
 class ActionButton(ft.ElevatedButton):
@@ -1333,37 +518,7 @@ def users():
 
 
 def main(page: ft.Page):
-    # Configuration de la page
-    # 1. Configuration de la page
-    page.title = "Cliexe"
-    page.theme_mode = ft.ThemeMode.LIGHT
-
-    # 2. L'icône de la FENÊTRE (le fichier doit être accessible)
-    # Assurez-vous que logo.png est à la racine de votre projet
-    page.window_icon = "logo.png"
-
-    # 3. Forcer la mise à jour pour que le système prenne en compte l'icône
-    page.update()
-
-    # Si vous voulez afficher l'icône DANS la page (Header)
-    logo_display = ft.Image(
-        src="logo.png",
-        width=50,
-        height=50,
-
-    )
-
-    page.add(logo_display, ft.Text("Bienvenue sur Fidelia"))
-
-    # Correction de la variable test (si c'est un dictionnaire ou un objet)
-    # En Python, on ne peut pas appeler un entier comme une fonction.
-    # J'imagine que vous vouliez stocker ces infos :
-    app_info = {
-        "points": 21,
-        "nom": "Cliexe",
-        "logo": "logo.png",
-        "icon": "logo.png"
-    }
+    page.title = "Gestionnaire de Budget Cuisine"
     page.scroll = "auto"
     page.theme_mode = ft.ThemeMode.LIGHT
     test = 21
@@ -1479,63 +634,59 @@ def main(page: ft.Page):
         err_msg = ft.Text("", color="red", size=12, weight="w500")
 
         # --- LOGIQUE D'INSCRIPTION ---
-
-        import json
-
-        import json
-        import os
-
         def register(e):
-            # 1. Vérification des champs
-            nom = nom_in.value.strip() if nom_in.value else ""
-            email = email_in.value.strip().lower() if email_in.value else ""
-            password = pass_in.value.strip() if pass_in.value else ""
-            tel = tel_in.value.strip() if tel_in.value else ""
-
-            if not all([nom, email, password, tel]):
+            # Vérification si les champs sont vides
+            if not all([nom_in.value, email_in.value, pass_in.value, tel_in.value]):
                 err_msg.value = "Veuillez remplir tous les champs obligatoires."
                 page.update()
                 return
 
-            # 2. Validation du numéro
-            digits_only = "".join(filter(str.isdigit, tel))
+            # Nettoyage du numéro (on ne garde que les chiffres pour la base de données)
+            digits_only = "".join(filter(str.isdigit, tel_in.value))
+
             if len(digits_only) < 8:
-                err_msg.value = "Numéro invalide (8 chiffres min)."
+                err_msg.value = "Veuillez entrer un numéro valide (8 chiffres min)."
                 page.update()
                 return
 
-            # 3. Feedback visuel
+            if len(pass_in.value) < 6:
+                err_msg.value = "Le mot de passe doit faire 6 caractères."
+                page.update()
+                return
+
+            # Feedback visuel : chargement
             btn_reg.disabled = True
             btn_reg.content = ft.ProgressRing(width=20, height=20, color="white", stroke_width=2)
             page.update()
 
             try:
-                # 4. Préparation des données
-                # Utilisation de .get() pour localId pour éviter le crash
+                # Création Firebase Auth
+                user = auth.create_user_with_email_and_password(email_in.value, pass_in.value)
 
+                # Préparation des données
                 user_data = {
-                    "nom": nom,
-                    "email": email,
+                    "nom": nom_in.value,
+                    "email": email_in.value,
                     "tel": digits_only,
-                    "ville": ville_in.value if ville_in.value else "",
-                    "quartier": quartier_in.value if quartier_in.value else "",
-
+                    "ville": ville_in.value,
+                    "quartier": quartier_in.value,
+                    "localId": user['localId']
                 }
 
-                # 5. Sauvegarde JSON avec encodage FORCÉ
-                # On utilise 'w' et encoding='utf-8' pour éviter l'erreur 0x8a
-                try:
-                    with open("session_utilisateur.json", "w", encoding="utf-8") as f:
-                        json.dump(user_data, f, ensure_ascii=False, indent=4)
-                except Exception as file_err:
-                    print(f"Erreur écriture fichier: {file_err}")
+                # Enregistrement Database
+                db.child("users").child(user['localId']).set(user_data)
 
-                # 6. Redirection
+                # Sauvegarde session locale
+                import json
+                with open("session_utilisateur.txt", "w", encoding="utf-8") as f:
+                    json.dump(user_data, f, ensure_ascii=False)
+
+                # Redirection vers l'accueil
                 render_home()
 
             except Exception as error:
                 print(f"Erreur inscription: {error}")
-                err_msg.value = "Erreur: Problème réseau ou compte déjà utilisé."
+                err_msg.value = "Erreur: Email déjà utilisé ou problème réseau."
                 btn_reg.disabled = False
                 btn_reg.content = ft.Text("CRÉER MON COMPTE", weight="bold")
                 page.update()
@@ -1543,10 +694,10 @@ def main(page: ft.Page):
         # --- BOUTON PRINCIPAL ---
         btn_reg = ft.ElevatedButton(
             content=ft.Text("CRÉER MON COMPTE", weight="bold"),
-            bgcolor=CP, color="white", height=55, width=400,
+            bgcolor=CP, color="white",
+            height=55, width=400,
             on_click=register,
             style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=12))
-
         )
 
         # --- MISE EN PAGE FINALE ---
@@ -1564,12 +715,203 @@ def main(page: ft.Page):
                 err_msg,
                 ft.Container(height=10),
                 btn_reg,
+                ft.TextButton(
+                    "Déjà un compte ? Connexion",
+                    on_click=lambda _: go_to_login()
+                )
             ],
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             scroll=ft.ScrollMode.ADAPTIVE
         )
 
         page.add(ft.Container(padding=20, content=formulaire))
+        page.update()
+
+    def go_to_login(e=None):
+        """Affiche le formulaire de connexion avec UX optimisée"""
+        page.clean()
+        CP = "#5D8A66"  # Ta couleur verte Cliexe
+
+        # --- ÉLÉMENTS DE SAISIE ---
+        email_log = ft.TextField(
+            label="Email",
+            border_radius=12,
+            prefix_icon=ft.Icons.EMAIL_OUTLINED,
+            keyboard_type=ft.KeyboardType.EMAIL,
+            border_color=CP,
+            on_submit=lambda _: pass_log.focus()  # Passe au champ suivant avec 'Entrée'
+        )
+        pass_log = ft.TextField(
+            label="Mot de passe",
+            password=True,
+            can_reveal_password=True,
+            border_radius=12,
+            prefix_icon=ft.Icons.LOCK_OUTLINE,
+            border_color=CP,
+            on_submit=lambda e: login(e)
+        )
+        err_log = ft.Text("", color="red600", weight="w500", size=13)
+
+        # --- LOGIQUE DE CONNEXION ---
+        def login(e):
+            # Désactiver le bouton et montrer le chargement
+            btn_login.disabled = True
+            btn_login.content = ft.ProgressRing(width=20, height=20, color="white", stroke_width=2)
+            page.update()
+
+            try:
+                # 1. Authentification Firebase
+                user = auth.sign_in_with_email_and_password(email_log.value, pass_log.value)
+
+                # 2. Récupération & Session
+                info = db.child("users").child(user['localId']).get().val()
+                if info:
+                    data = {k: info.get(k) for k in ["nom", "email", "tel", "ville", "quartier"]}
+                    data["localId"] = user['localId']
+                    with open("session_utilisateur.txt", "w", encoding="utf-8") as f:
+                        json.dump(data, f, indent=4)
+
+                # 3. Redirection intelligente
+                conn = sqlite3.connect("repas_db.sqlite")
+                count = conn.execute("SELECT COUNT(*) FROM planning").fetchone()[0]
+                conn.close()
+
+                render_final_view() if count > 0 else render_home()
+
+            except Exception as ex:
+                err_log.value = "Identifiants invalides ou problème réseau."
+                btn_login.disabled = False
+                btn_login.content = ft.Text("SE CONNECTER", weight="bold")
+                page.update()
+
+        # --- BOUTON PRINCIPAL ---
+        btn_login = ft.ElevatedButton(
+            content=ft.Text("SE CONNECTER", weight="bold"),
+            bgcolor=CP,
+            color="white",
+            height=55,
+            width=320,
+            on_click=login,
+            style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=12))
+        )
+
+        # --- MISE EN PAGE ---
+        page.add(
+            ft.Container(
+                expand=True,
+                alignment=ft.Alignment(0, 0),
+                content=ft.Column([
+                    # Section Logo
+                    ft.Container(
+                        content=ft.Column([
+                            ft.Image(src="logo.png", height=90, fit="contain"),  #
+                            ft.Text("Bon retour parmi nous !", size=14, color="grey600"),
+                        ], alignment=ft.Alignment(0,0)),
+                        margin=ft.margin.only(bottom=20)
+                    ),
+
+                    # Formulaire
+                    email_log,
+                    pass_log,
+                    err_log,
+
+                    ft.Container(height=10),
+                    btn_login,
+
+                    ft.TextButton(
+                        "Nouveau sur Cliexe ? Créer un compte",
+                        on_click=lambda _: go_to_signup(),
+                        style=ft.ButtonStyle(color=CP)
+                    )
+                ],
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=15,
+                    tight=True
+                )
+            )
+        )
+        page.update()
+        try:
+            requests.get('https://www.google.com', timeout=5)
+
+
+
+        except:
+            print("pas de connexion")
+
+            def close_dlg(e):
+                dlg.open = False
+                page.update()
+
+            def confirm_action(e):
+                dlg.open = False
+                page.update()
+                try:
+                    conn = sqlite3.connect("repas_db.sqlite")
+                    c = conn.cursor()
+                    # On vérifie si la table planning contient au moins une ligne
+                    c.execute("SELECT COUNT(*) FROM planning")
+                    count = c.fetchone()[0]
+                    conn.close()
+                    render_final_view()
+                except:
+                    render_home()
+                # Appelle votre fonction de redirection
+
+            # Palette de couleurs conseillée
+            C_OFFLINE = "#546E7A"  # Gris-bleu pour le mode hors-ligne
+            CP = "#5D8A66"  # Vert principal pour l'action positive
+
+            dlg = ft.AlertDialog(
+                modal=True,
+                shape=ft.RoundedRectangleBorder(radius=25),
+                content_padding=ft.padding.all(25),
+                content=ft.Column([
+                    # Illustration visuelle
+                    ft.Container(
+                        content=ft.Icon(ft.Icons.SIGNAL_WIFI_OFF_ROUNDED, color=ft.Colors.ORANGE_700, size=50),
+                        bgcolor=ft.Colors.ORANGE_50,
+                        padding=20,
+                        shape=ft.BoxShape.CIRCLE,
+                    ),
+                    # Titre et message
+                    ft.Column([
+                        ft.Text("Oups ! Pas d'internet", weight="bold", size=20, text_align="center"),
+                        ft.Text(
+                            "Nous ne parvenons pas à joindre nos serveurs. Vous pouvez continuer à consulter vos données locales en mode hors-ligne.",
+                            size=14, color="grey700", text_align="center"
+                        ),
+                    ], horizontal_alignment="center", spacing=10),
+
+                    ft.Divider(height=10, color="transparent"),
+
+                    # Action principale (Hors-ligne)
+                    ft.ElevatedButton(
+                        content=ft.Row([
+                            ft.Icon(ft.Icons.CLOUDY_SNOWING, size=20),
+                            ft.Text("CONTINUER HORS-LIGNE", weight="bold"),
+                        ], alignment="center"),
+                        on_click=confirm_action,
+                        bgcolor=C_OFFLINE,
+                        color="white",
+                        height=50,
+                        style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=12))
+                    ),
+
+                    # Action secondaire (Réessayer)
+                    ft.TextButton(
+                        "Réessayer la connexion",
+                        on_click=lambda _: (setattr(dlg, "open", False), page.update()),  # Ou votre fonction close_dlg
+                        style=ft.ButtonStyle(color=CP)
+                    )
+
+                ], tight=True, spacing=15, horizontal_alignment="center"),
+            )
+
+            page.overlay.append(dlg)
+            dlg.open = True
+            page.update()
+
         page.update()
 
     def no_compte(ns):
@@ -1579,7 +921,7 @@ def main(page: ft.Page):
         def go_to_auth(e):
             dlg.open = False
             page.update()
-            go_to_signup()  # Appelle votre fonction de connexion existante
+            go_to_login()  # Appelle votre fonction de connexion existante
 
         dlg = ft.AlertDialog(
             modal=True,
@@ -1694,15 +1036,15 @@ def main(page: ft.Page):
             # Vérification rapide de la connexion
             requests.get('https://www.google.com', timeout=5)
 
-            if os.path.exists("session_utilisateur.json"):
+            if os.path.exists("session_utilisateur.txt"):
 
                 def confirm_logout(e):
                     try:
-                        if os.path.exists("session_utilisateur.json"):
-                            os.remove("session_utilisateur.json")  # Suppression effective
+                        if os.path.exists("session_utilisateur.txt"):
+                            os.remove("session_utilisateur.txt")  # Suppression effective
                         dlg.open = False
                         page.update()
-                        go_to_signup()  # Retour à la page de connexion
+                        go_to_login()  # Retour à la page de connexion
                     except Exception as ex:
                         print(f"Erreur lors de la suppression : {ex}")
 
@@ -1753,10 +1095,12 @@ def main(page: ft.Page):
 
     # Note : Assurez-vous que 'db' et 'auth' sont accessibles (importés ou globaux)
 
+
     # --- CONFIGURATION GLOBALE ---
     C_MARKET = "#2E7D32"
     SESSION_FILE = "session_utilisateur.txt"
     CONFIG_FILE = "config.json"
+
 
     # --- CONFIGURATION ET THEME ---
     THEME_COLOR = "#2E7D32"  # Vert Forêt
@@ -1783,7 +1127,7 @@ def main(page: ft.Page):
 
     def render_market(page, render_final_view):
         # Chemin vers le fichier de session créé à l'inscription/connexion
-        SESSION_FILE = "session_utilisateur.json"
+        SESSION_FILE = "session_utilisateur.txt"
 
         if os.path.exists(SESSION_FILE):
             try:
@@ -1803,24 +1147,13 @@ def main(page: ft.Page):
                     page.update()
 
                 def get_user_session():
-                    """Récupère les infos de l'utilisateur de manière ultra-sécurisée"""
-                    SESSION_FILE = "session_utilisateur.json"
-                    default = {"nom": "Client Inconnu", "tel": "Non spécifié", "ville": "", "quartier": ""}
-
-                    if not os.path.exists(SESSION_FILE):
-                        return default
-
+                    """Récupère les infos de l'utilisateur stockées localement"""
                     try:
                         with open(SESSION_FILE, "r", encoding="utf-8") as f:
-                            data = json.load(f)
-
-                        # On force le retour d'un dictionnaire même si le JSON est corrompu
-                        if isinstance(data, dict):
-                            return data
-                        else:
-                            return {"nom": str(data), "tel": "Non spécifié"}
+                            # On charge le dictionnaire stocké par json.dumps
+                            return json.loads(f.read())
                     except:
-                        return default
+                        return {"nom": "Client Inconnu", "tel": "Non spécifié"}
 
                 # ============ LOGIQUE PANIER ============
                 def update_cart(name, q, p):
@@ -1849,51 +1182,33 @@ def main(page: ft.Page):
                         return
 
                     # ENVOI VERS FIREBASE AVANT D'AFFICHER LE DIALOGUE
-                    envoi_reussi = envoyer_commande_marche()
+                    envoi_reussi = envoyer_commande_firebase()
+                    if envoi_reussi:
+                        render_confirmation_dialog()
 
                 # ============ FIREBASE SEND ============
-                import urllib.parse
-
-                def envoyer_commande_marche():
+                def envoyer_commande_firebase():
                     try:
-                        # 1. Infos utilisateur
                         user_info = get_user_session()
-                        nom_client = user_info.get("nom", "Client")
-                        tel_client = user_info.get("tel", "Inconnu")
 
-                        # 2. Construction du panier texte pour WhatsApp
-                        # Votre cart_items est un dictionnaire : { "Nom": {"qty": 2, "price": 500 ...} }
-                        details_panier = ""
-                        for name, data in cart_items.items():
-                            qte = data.get("qty", 1)
-                            details_panier += f"- {name} (x{qte})\n"
+                        # Construction de l'objet de commande final
+                        commande_finale = {
+                            "info": user_info.get("nom"),
+                            "telephone": user_info.get("tel"),
+                            "ville": user_info.get("ville", "Non précisée"),
+                            "quartier": user_info.get("quartier", "Non précisé"),
+                            "type": "MARCHÉ",
+                            "panier": cart_items,  # Contient noms, quantités et prix
+                            "total_paye": total_view.value,
+                            "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                            "statut": "En attente"
+                        }
 
-                        # 3. Message WhatsApp formaté
-                        date_actuelle = datetime.now().strftime("%d/%m/%Y %H:%M")
-                        message_whatsapp = (
-                            f"🛒 *NOUVELLE COMMANDE MARCHÉ*\n\n"
-                            f"👤 *Client:* {nom_client}\n"
-                            f"📞 *Tel:* {tel_client}\n"
-                            f"📍 *Lieu:* {user_info.get('ville', '')}, {user_info.get('quartier', '')}\n\n"
-                            f"📦 *ARTICLES :*\n{details_panier}\n"
-                            f"💰 *TOTAL :* {total_view.value}\n"
-                            f"⏰ *Date:* {date_actuelle}"
-                        )
-
-                        # 4. Envoi et Redirection
-                        msg_encoded = urllib.parse.quote(message_whatsapp)
-                        num = "22871075241"
-                        # Remplacez par le numéro du commerçant
-                        whatsapp_url = f"whatsapp://send?phone={num}&text={msg_encoded}"
-                        page.launch_url(whatsapp_url)
-
-                        render_final_view()  # Ou render_home() selon ton besoin
-                        page.update()
-
-                        return True  # Pour déclencher le dialogue de confirmation
-
+                        # Envoi vers le noeud 'commandes' de Firebase
+                        db.child("commandes").push(commande_finale)
+                        return True
                     except Exception as e:
-                        print(f"Erreur envoi marché: {e}")
+                        notify(f"Erreur d'envoi : {str(e)}", color="red")
                         return False
 
                 # ============ PAGE PANIER ============
@@ -1926,10 +1241,9 @@ def main(page: ft.Page):
                     if name in cart_items:
                         del cart_items[name]
                     update_cart_and_refresh()
-
                 def render_cart():
                     page.clean()
-                    page.bgcolor = "#F8F9FA"  # Fond gris très clair
+                    page.bgcolor = "#F8F9FA" # Fond gris très clair
 
                     items_ui = ft.Column(spacing=15, scroll=ft.ScrollMode.ADAPTIVE, expand=True)
 
@@ -1964,11 +1278,9 @@ def main(page: ft.Page):
                                                 bgcolor="#F0F0F0",
                                                 border_radius=10,
                                                 content=ft.Row([
-                                                    ft.IconButton(ft.Icons.REMOVE, icon_size=16,
-                                                                  on_click=lambda e: decrease_qty(name)),
+                                                    ft.IconButton(ft.Icons.REMOVE, icon_size=16, on_click=lambda e: decrease_qty(name)),
                                                     ft.Text(str(data['qty']), weight="bold"),
-                                                    ft.IconButton(ft.Icons.ADD, icon_size=16,
-                                                                  on_click=lambda e: increase_qty(name)),
+                                                    ft.IconButton(ft.Icons.ADD, icon_size=16, on_click=lambda e: increase_qty(name)),
                                                 ], spacing=0)
                                             ),
                                             ft.Text(f"{data['total']} F", weight="bold", size=16, color=C_MARKET),
@@ -1982,8 +1294,7 @@ def main(page: ft.Page):
                         ft.Container(
                             padding=ft.padding.only(top=40, left=10, right=10, bottom=10),
                             content=ft.Row([
-                                ft.IconButton(ft.Icons.ARROW_BACK_IOS_NEW, icon_size=20,
-                                              on_click=lambda e: go_market()),
+                                ft.IconButton(ft.Icons.ARROW_BACK_IOS_NEW, icon_size=20, on_click=lambda e: go_market()),
                                 ft.Text("Mon Panier", size=20, weight="bold", expand=True),
                                 ft.Text(f"{len(cart_items)} articles", color="grey")
                             ])
@@ -2013,7 +1324,7 @@ def main(page: ft.Page):
                                     color="white",
                                     style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=15)),
                                     height=55,
-                                    width=float("inf"),  # Prend toute la largeur
+                                    width=float("inf"), # Prend toute la largeur
                                     on_click=lambda e: go_confirmation()
                                 )
                             ], tight=True)
@@ -2022,6 +1333,27 @@ def main(page: ft.Page):
                     page.update()
 
                 # ============ DIALOGUE CONFIRMATION ============
+                def render_confirmation_dialog():
+                    dlg = ft.AlertDialog(
+                        modal=True,
+                        title=ft.Text("Commande envoyée !", weight="bold", text_align="center"),
+                        content=ft.Column([
+                            ft.Icon(ft.Icons.PHONE_IN_TALK_ROUNDED, color=C_MARKET, size=60),
+                            ft.Text("Notre équipe vous contacte dans 5 minutes.", text_align="center"),
+                        ], tight=True, spacing=20, horizontal_alignment="center"),
+                        actions=[
+                            ft.ElevatedButton(
+                                "D'ACCORD",
+                                on_click=lambda _: (setattr(dlg, "open", False), render_final_view()),
+                                bgcolor=C_MARKET, color="white"
+                            )
+                        ],
+                        actions_alignment="center",
+                        shape=ft.RoundedRectangleBorder(radius=20),
+                    )
+                    page.overlay.append(dlg)
+                    dlg.open = True
+                    page.update()
 
                 # ============ RECHERCHE & AFFICHAGE ============
                 def filter_items(e):
@@ -2069,9 +1401,8 @@ def main(page: ft.Page):
                 no_connexion()
         else:
             no_compte("Connectez-vous pour commander")
-
     def render_loan_page(page: ft.Page, on_back_callback):
-        SESSION_FILE = "session_utilisateur.json"
+        SESSION_FILE = "session_utilisateur.txt"
 
         def get_user_session():
             """Récupère les infos de l'utilisateur stockées localement"""
@@ -2155,83 +1486,70 @@ def main(page: ft.Page):
                 repas_info_txt.value = f"Équivaut à environ {nb_repas} repas"
                 page.update()
 
-            import urllib.parse
-
             def envoyer_demande_pret(e):
                 try:
-                    # 1. Feedback visuel immédiat
+                    requests.get('https://www.google.com', timeout=5)
                     btn_submit.disabled = True
-                    btn_submit.content = ft.ProgressRing(width=20, height=20, color="white", stroke_width=2)
+                    btn_submit.content = ft.ProgressRing(width=20, height=20, color="white")
                     page.update()
 
-                    # 2. Vérification connexion
-                    try:
-                        requests.get('https://www.google.com', timeout=3)
-                    except:
-                        raise Exception("Pas de connexion")
+                    demande_pret = {
+                        "nom": user_info.get("nom"),
+                        "telephone": user_info.get("tel"),
+                        "ville": user_info.get("ville"),
+                        "quartier": user_info.get("quartier"),
+                        "type": "DEMANDE_PRET",
+                        "montant": f"{int(amt_slider.value):,} FCFA",
+                        "duree": f"{int(duration_slider.value)} mois",
+                        "date": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                        "statut": "En attente étude"
+                    }
 
-                    # 3. Récupération des données
-                    user_info = get_user_session()  # Ta fonction de session corrigée
-                    nom_client = user_info.get("nom", "Client")
-                    tel_client = user_info.get("tel", "Inconnu")
+                    db.child("commandes").push(demande_pret)
 
-                    montant_pret = f"{int(amt_slider.value):,} FCFA"
-                    duree_pret = f"{int(duration_slider.value)} mois"
-                    date_actuelle = datetime.now().strftime("%d/%m/%Y %H:%M")
-
-                    # 4. ENREGISTREMENT SQLITE LOCAL (Historique des prêts)
-                    conn = None
-                    try:
-                        conn = sqlite3.connect("prets.db")
-                        cursor = conn.cursor()
-                        cursor.execute('''
-                            CREATE TABLE IF NOT EXISTS demandes_pret 
-                            (id INTEGER PRIMARY KEY AUTOINCREMENT, nom TEXT, montant TEXT, duree TEXT, date TEXT)
-                        ''')
-                        cursor.execute('''
-                            INSERT INTO demandes_pret (nom, montant, duree, date)
-                            VALUES (?, ?, ?, ?)
-                        ''', (nom_client, montant_pret, duree_pret, date_actuelle))
-                        conn.commit()
-                    except Exception as db_err:
-                        print(f"Erreur SQLite Prêt: {db_err}")
-                    finally:
-                        if conn:
-                            conn.close()  # Important pour éviter le RuntimeWarning
-
-                    # 5. PRÉPARATION DU MESSAGE WHATSAPP
-                    message_whatsapp = (
-                        f"🏦 *NOUVELLE DEMANDE DE PRÊT ALIMENTAIRE*\n\n"
-                        f"👤 *Client:* {nom_client}\n"
-                        f"📞 *Tel:* {tel_client}\n"
-                        f"📍 *Ville:* {user_info.get('ville', 'Non précisée')}\n\n"
-                        f"💰 *Montant souhaité:* {montant_pret}\n"
-                        f"📅 *Durée de remboursement:* {duree_pret}\n"
-                        f"⏰ *Date:* {date_actuelle}\n\n"
-                        f"👉 _Merci de me recontacter pour l'étude de mon dossier._"
+                    dlg_pret = ft.AlertDialog(
+                        modal=True,
+                        title=ft.Text("Demande de prêt reçue", weight="bold", text_align=ft.TextAlign.CENTER),
+                        content=ft.Column([
+                            ft.Icon(ft.Icons.SUPPORT_AGENT_ROUNDED, color=CP, size=60),
+                            ft.Text(
+                                "Étude de votre dossier",
+                                weight="bold",
+                                size=16,
+                                text_align=ft.TextAlign.CENTER
+                            ),
+                            ft.Text(
+                                "Un conseiller financier va vous appeler d'ici quelques instants pour valider votre demande de prêt alimentaire.",
+                                size=14,
+                                color=CT2,
+                                text_align=ft.TextAlign.CENTER
+                            ),
+                        ], tight=True, spacing=20, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+                        actions=[
+                            ft.Container(
+                                content=ft.ElevatedButton(
+                                    "J'ATTENDS L'APPEL DU CONSEILLER",
+                                    on_click=lambda _: (setattr(dlg_pret, "open", False), on_back_callback()),
+                                    bgcolor=CP,
+                                    color="white",
+                                    height=50,
+                                ),
+                                alignment=ft.alignment.Alignment(0, 0),
+                                padding=ft.padding.only(bottom=10)
+                            )
+                        ],
+                        actions_alignment=ft.MainAxisAlignment.CENTER,
+                        shape=ft.RoundedRectangleBorder(radius=20),
                     )
 
-                    # Encodage et lien
-                    msg_encoded = urllib.parse.quote(message_whatsapp)
-                    numero_service_finance = "22871075241"  # REMPLACE PAR TON NUMÉRO
-                    whatsapp_url = f"https://wa.me/{numero_service_finance}?text={msg_encoded}"
-
-                    # 6. LANCEMENT ET REDIRECTION
-                    page.launch_url(whatsapp_url)
-
-                    # Retour à l'écran précédent ou accueil
-                    if 'on_back_callback' in locals() or 'on_back_callback' in globals():
-                        on_back_callback()
-
+                    page.overlay.append(dlg_pret)
+                    dlg_pret.open = True
                     page.update()
 
-                except Exception as error:
-                    print(f"Erreur Prêt: {error}")
-                    # En cas d'erreur, on réactive le bouton
+                except:
                     btn_submit.disabled = False
                     btn_submit.content = ft.Text("SOUMETTRE MA DEMANDE", weight="bold")
                     page.update()
-                    if 'no_connexion' in globals(): no_connexion()
 
             amt_slider.on_change = update_simulation
             duration_slider.on_change = update_simulation
@@ -2320,8 +1638,8 @@ def main(page: ft.Page):
                 print("Erreur : Pas de connexion internet.")
 
     def render_order_page(plat_name, base_price, shipping, i, date_livraison):
-        SESSION_FILE = "session_utilisateur.json"
-        if os.path.exists(SESSION_FILE):
+        SESSION_FILE = "session_utilisateur.txt"
+        if os.path.exists("session_utilisateur.txt"):
             try:
                 requests.get('https://www.google.com', timeout=5)
                 page.clean()
@@ -2358,55 +1676,113 @@ def main(page: ft.Page):
                     except:
                         return {"nom": "Client Inconnu", "tel": "Non spécifié"}
 
-                import urllib.parse
-
-                import urllib.parse
-
                 def envoyer_commande_kit(e):
                     try:
-                        # 1. Animation visuelle
+                        # 1. Vérification connexion
+                        requests.get('https://www.google.com', timeout=5)
+
+                        # 2. Animation visuelle immédiate
                         btn_kit.disabled = True
-                        btn_kit.content = ft.ProgressRing(width=20, height=20, color="white", stroke_width=2)
+                        btn_kit.content = ft.ProgressRing(width=20, height=20, color="white")
                         page.update()
 
-                        # 2. Préparation des données (On utilise tes vraies variables)
-                        phone = "22890954239"  # Assure-toi que c'est le bon numéro sans le +
+                        # 3. Récupération des données utilisateur et de la commande
+                        user_info = get_user_session()
+                        date_actuelle = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-                        message_brut = (
-                            f"Bonjour, je souhaite commander :\n"
-                            f"🍴 Plat : {plat_name}\n"
-                            f"🛒 Panier : {', '.join(panier_kit)}\n"
-                            f"💰 Total : {total_txt.value}"
+                        # Nettoyage du prix : on garde uniquement les chiffres
+                        prix_clean = "".join(filter(str.isdigit, total_txt.value))
+                        prix_numerique = int(prix_clean) if prix_clean else 0
+
+                        # 4. STRUCTURE DE LA COMMANDE FINALE (Kit Cuisine)
+                        commande_finale = {
+                            "info": user_info.get("nom", "Client"),
+                            "telephone": user_info.get("tel", "Inconnu"),
+                            "ville": user_info.get("ville", "Non précisée"),
+                            "quartier": user_info.get("quartier", "Non précisé"),
+                            "type": "KIT_CUISINE",
+                            "nom_plat": plat_name,
+                            "panier": panier_kit,  # Liste des ingrédients sélectionnés
+                            "total_paye": total_txt.value,
+                            "date": date_actuelle,
+                            "statut": "En attente"
+                        }
+
+                        # 5. ENVOI FIREBASE
+                        try:
+                            db.child("commandes").push(commande_finale)
+                        except Exception as ex:
+                            print(f"Erreur Firebase : {ex}")
+
+                        # 6. ENREGISTREMENT SQLITE LOCAL
+                        try:
+                            date_actuelle = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            conn = sqlite3.connect("commandes.db")
+                            cursor = conn.cursor()
+                            cursor.execute('''
+                                    INSERT INTO commandes (date_commande, nom_plat, prix_total, ingredients)
+                                    VALUES (?, ?, ?, ?)
+                                ''', (date_livraison, plat_name, prix_numerique, ", ".join(panier_kit)))
+                            conn.commit()
+                            conn.close()
+                            # 7 point fidelite
+                            nom = user_info.get("nom", "Client")
+                            conn = sqlite3.connect('fidelite.db')
+                            cursor = conn.cursor()
+
+                            # On vérifie si le client existe, sinon on le crée
+                            cursor.execute('INSERT OR IGNORE INTO clients (nom, points) VALUES (?, 0)', (nom,))
+
+                            # On ajoute +1 point à chaque commande
+                            cursor.execute('UPDATE clients SET points = points + 1 WHERE nom = ?', (nom,))
+
+                            # On récupère le nouveau solde
+                            cursor.execute('SELECT points FROM clients WHERE nom = ?', (nom,))
+                            nouveau_solde = cursor.fetchone()[0]
+
+                            conn.commit()
+                            conn.close()
+                        except Exception as ex:
+                            print(f"Erreur SQLite : {ex}")
+
+                        # 7. AFFICHAGE DU DIALOGUE DE SUCCÈS
+                        dlg = ft.AlertDialog(
+                            modal=True,
+                            title=ft.Text("Commande bien reçue !", weight="bold", text_align=ft.TextAlign.CENTER),
+                            content=ft.Column([
+                                ft.Icon(ft.Icons.PHONE_IN_TALK_ROUNDED, color=CP, size=60),
+                                ft.Text("Restez à côté de votre téléphone.", weight="bold", size=16,
+                                        text_align=ft.TextAlign.CENTER),
+                                ft.Text(
+                                    "Notre équipe va vous appeler d'ici 5 minutes pour confirmer la livraison de vos ingrédients.",
+                                    size=14, color=CT2, text_align=ft.TextAlign.CENTER
+                                ),
+                            ], tight=True, spacing=20, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+                            actions=[
+                                ft.Container(
+                                    content=ft.ElevatedButton(
+                                        "D'ACCORD, J'ATTENDS L'APPEL",
+                                        on_click=lambda _: (setattr(dlg, "open", False), render_final_view()),
+                                        bgcolor=CP, color="white", height=50,
+                                    ),
+                                    alignment=ft.Alignment(0, 0),
+                                    padding=ft.padding.only(bottom=10)
+                                )
+                            ],
+                            actions_alignment=ft.MainAxisAlignment.CENTER,
+                            shape=ft.RoundedRectangleBorder(radius=20),
                         )
 
-                        # 3. ENCODAGE (Indispensable pour les espaces et emojis)
-                        message_encoded = urllib.parse.quote(message_brut)
+                        page.overlay.append(dlg)
+                        dlg.open = True
+                        page.update()
 
-                        # 4. LE LIEN DIRECT (Format le plus compatible)
-                        # On essaie d'abord le protocole direct de l'app
-                        whatsapp_url = f"whatsapp://send?phone={phone}&text={message_encoded}"
-
-                        # 5. LANCEMENT
-                        page.launch_url(whatsapp_url)
-
-                    except Exception as ex:
-                        print(f"Erreur : {ex}")
-                        # Si whatsapp:// échoue, on tente le lien universel en secours
-                        try:
-                            page.launch_url(f"https://wa.me/{phone}?text={message_encoded}")
-                        except:
-                            pass
-
-                    finally:
-                        # 6. Réinitialisation (toujours dans un finally pour ne pas rester bloqué)
+                    except requests.RequestException:
+                        # En cas d'erreur, on réactive le bouton
                         btn_kit.disabled = False
                         btn_kit.content = ft.Text("COMMANDER LE KIT", weight="bold")
                         page.update()
-
-                def close_dlg(dlg):
-                    dlg.open = False
-                    page.update()
-                    render_final_view()  # Fonction de redirection
+                        no_connexion()
 
                 # Liste des ingrédients avec icônes de "marché"
                 liste_items = ft.Column(spacing=10, scroll=ft.ScrollMode.AUTO)
@@ -2478,17 +1854,9 @@ def main(page: ft.Page):
         else:
             no_compte("Vous devez vous connectez a un compte pour pouvoir commander")
 
+
+
     def render_splash(page: ft.Page):
-
-        # import time
-
-        # 3. Simulation du temps de chargement (ou lecture de votre DB)
-        # time.sleep(3)  # Laisse le logo 3 secondes
-
-        # 4. Retirer le splash et lancer la vue principale
-        page.splash = None
-        render_final_view()  # Appelle votre fonction
-        page.update()
         format_date = "%Y-%m-%d %H:%M:%S"
         maintenant = datetime.now()
         if os.path.exists("commandes.db"):
@@ -2584,7 +1952,7 @@ def main(page: ft.Page):
             return
 
         # --- 3. SI NON EXPIREE : LOGIQUE DE SESSION ET SQLITE ---
-        if os.path.exists("session_utilisateur.json"):
+        if os.path.exists("session_utilisateur.txt"):
             try:
                 # Vérification de la base de données
                 conn = sqlite3.connect("repas_db.sqlite")
@@ -2600,10 +1968,10 @@ def main(page: ft.Page):
 
             except Exception as e:
                 print(f"Erreur lors de la lecture : {e}")
-                go_to_signup(page)
+                go_to_login(page)
         else:
             print("Aucun fichier de session trouvé.")
-            go_to_signup(page)
+            go_to_login(page)
 
     # --- DIALOGUE D'EXPIRATION (Séparé pour la clarté) ---
     def show_expiration_dialog(page, date_fin_str):
@@ -2627,7 +1995,7 @@ def main(page: ft.Page):
     def modifier_plat_action(plat_name, date_iso, index_repas, rows_originales):
         # 1. On récupère la liste des noms de plats (assurez-vous que PLATS_FAMILLE est accessible)
         # On trie pour que ce soit plus facile à trouver
-        options_repas = sorted(list(PLATS_PETIT_COMITE.keys()))
+        options_repas = sorted(list(PLATS_FAMILLE.keys()))
 
         def enregistrer_modif(e):
             # Récupération de la valeur choisie dans le menu déroulant
@@ -2688,83 +2056,44 @@ def main(page: ft.Page):
         page.overlay.append(dlg_edit)
         dlg_edit.open = True
         page.update()
-
     def render_final_view(e=None):
         global i_plat, i_jour
+
         page.clean()
-        SESSION_FILE = "session_utilisateur.json"
+        SESSION_FILE = "session_utilisateur.txt"
 
-        # 1. Récupération réelle de l'utilisateur
-        import json
-        import os
+        def user():
+            """Récupère les infos de l'utilisateur stockées localement"""
+            try:
+                with open(SESSION_FILE, "r", encoding="utf-8") as f:
+                    # On charge le dictionnaire stocké par json.dumps
+                    return json.loads(f.read())
+            except:
+                return {"nom": "Client Inconnu", "tel": "Non spécifié"}
 
-        def get_current_user():
-            file_path = "session_utilisateur.json"
-            default_user = {"nom": "Client Inconnu"}
+        user_info = user()
+        conn = sqlite3.connect('fidelite.db')
+        cursor = conn.cursor()
+        nom = user_info.get("nom", "Client")
 
-            if not os.path.exists(file_path):
-                return default_user
-
-            # On essaie d'abord de lire en UTF-8, puis en latin-1 si UTF-8 échoue (erreur 0x8a)
-            for encoding_type in ["utf-8", "latin-1"]:
-                try:
-                    with open(file_path, "r", encoding=encoding_type) as f:
-                        content = f.read().strip()
-
-                    if not content:
-                        return default_user
-
-                    # Cas 1 : Format JSON (recommandé)
-                    if content.startswith("{"):
-                        return json.loads(content)
-
-                    # Cas 2 : Ancien format texte avec "|"
-                    elif "|" in content:
-                        parts = content.split("|")
-                        return {"nom": parts[0]}
-
-                    # Cas 3 : Texte brut (juste le nom)
-                    else:
-                        return {"nom": content}
-
-                except (UnicodeDecodeError, json.JSONDecodeError):
-                    continue  # On tente l'encodage suivant si celui-ci plante
-                except Exception as e:
-                    print(f"Erreur lecture session: {e}")
-                    return default_user
-
-            return default_user
-
-        user_info = get_current_user()
-        nom_utilisateur = user_info.get("nom", "Client Inconnu")
-
-        # 2. Gestion de la base de données Fidelia
-        import sqlite3
+        # On vérifie si le client existe, sinon on le crée
+        cursor.execute('INSERT OR IGNORE INTO clients (nom, points) VALUES (?, 0)', (nom,))
+        conn.commit()
+        conn.close()
+        nom_client = user_info.get("nom", "Client")
         conn = sqlite3.connect('fidelite.db')
         cursor = conn.cursor()
 
-        cursor.execute('''
-                CREATE TABLE IF NOT EXISTS clients (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    nom TEXT UNIQUE,
-                    points INTEGER
-                )
-            ''')
-
-        # On insère l'utilisateur actuel s'il n'existe pas
-        cursor.execute('INSERT OR IGNORE INTO clients (nom, points) VALUES (?, 0)', (nom_utilisateur,))
-        conn.commit()
-
-        # On récupère ses points
-        cursor.execute('SELECT points FROM clients WHERE nom = ?', (nom_utilisateur,))
+        # 1. Récupérer les points du client
+        cursor.execute('SELECT points FROM clients WHERE nom = ?', (nom_client,))
         resultat = cursor.fetchone()
-        points_actuels = resultat[0] if resultat else 0
+
         conn.close()
 
         points_actuels = resultat[0]
 
-        with open("liste.json", "r") as f:
-            ELEMENTS_VALUES = json.load(f)
+        with open("liste.json", "r") as list:
+            ELEMENTS_VALUES = json.load(list)
 
         # 1. Préparation des dates
         today_iso = datetime.now().strftime("%Y-%m-%d")
@@ -2820,6 +2149,7 @@ def main(page: ft.Page):
                     }
 
                     # 3. Envoi à Firebase
+                    db.child("annulations_demandes").push(demande_annulation)
 
                     # 4. Suppression Locale (SQLite) pour libérer le bouton
                     today = datetime.now().strftime("%Y-%m-%d")  # Format identique
@@ -2831,6 +2161,7 @@ def main(page: ft.Page):
                             (plat_name, date_a_annuler)
                         )
                         conn.commit()
+
 
                     # 5. Fermeture et Feedback
                     # 5. Fermeture et Feedback
@@ -2846,7 +2177,7 @@ def main(page: ft.Page):
 
                     # 7. RECHARGER LA VUE (Correction ici)
                     import time
-                    # Laisse le temps au système de fermer le fichier DB
+                      # Laisse le temps au système de fermer le fichier DB
                     render_final_view()
                     page.update()
 
@@ -2875,7 +2206,7 @@ def main(page: ft.Page):
         # 4. Interface de base
         lv = ft.ListView(expand=True, spacing=0, padding=15)
         repas_labels = ["Petit-déjeuner", "Déjeuner", "Dîner", "Goûter", "Extra"]
-        if os.path.exists("session_utilisateur.json"):
+        if os.path.exists("session_utilisateur.txt"):
             mns = "Se deconnecter"
         else:
             mns = "Se connecter"
@@ -2926,7 +2257,7 @@ def main(page: ft.Page):
                     ft.Icon(ft.Icons.SETTINGS_OUTLINED, color=CP, size=18),
                     ft.Text("Options", color=CP, weight="bold", size=13),
                     ft.Icon(ft.Icons.ARROW_DROP_DOWN, color=CP, size=20)
-                ], spacing=5, alignment=ft.Alignment(0, 0)),
+                ], spacing=5, alignment=ft.Alignment(0,0)),
                 padding=ft.padding.symmetric(horizontal=12, vertical=6),
                 bgcolor=ft.Colors.with_opacity(0.1, CP),  # Fond léger de la couleur primaire
                 border_radius=20  # Style "pill" ou "chip"
@@ -3062,11 +2393,12 @@ def main(page: ft.Page):
         # 7. Affichage Final
         # --- Logique de progression ---
 
+
         # --- UI ---
         # Header avec correction du bug ImageFit
         def get_loyalty_data(points):
             if points <= 2:
-                return "NIVEAU BRONZE", "❤", ft.Colors.BROWN_400
+                return "NIVEAU BRONZE", "❤", ft.colors.BROWN_400
             elif points <= 5:
                 return "NIVEAU ARGENT", "💕", ft.Colors.BLUE_GREY_400
             elif points <= 10:
@@ -3384,6 +2716,8 @@ def main(page: ft.Page):
             ele = PLATS_PETIT_COMITE
         elif 3 <= nb <= 5:
             ele = PLATS_FAMILLE
+        elif 6 <= nb <= 20:
+            ele = PLATS_GRANDE_TABLE
 
         with open("liste.json", "w+") as liste:
             json.dump(ele, liste)
@@ -3413,7 +2747,6 @@ def main(page: ft.Page):
         render_verification()
 
     search_timer = None
-
     def render_home():
         page.clean()
         CP = "#5D8A66"
@@ -3481,62 +2814,67 @@ def main(page: ft.Page):
         search_timer = None
 
         def show_results(query=""):
-            # On supprime la logique du Timer pour une réponse instantanée
-            try:
-                # 1. On nettoie les résultats actuels
-                search_results.controls = []
+            # 2. IMPORTANT : On utilise nonlocal car search_timer
+            # appartient à la fonction parente (render_home)
+            nonlocal search_timer
 
-                # 2. On récupère les données (assure-toi que cette fonction est rapide)
-                nb = float(guests_input.value or 1)
-                dico, _ = get_active_dict(nb)
+            # Annuler le lancement précédent si on continue de taper
+            if search_timer is not None:
+                search_timer.cancel()
 
-                query_lower = query.lower().strip()
+            def perform_search():
+                # Pour éviter les crashs si l'utilisateur quitte la page pendant la recherche
+                try:
+                    search_results.controls.clear()
+                    nb = float(guests_input.value or 1)
+                    dico, _ = get_active_dict(nb)
 
-                # 3. Filtrage ultra-rapide par la première lettre (début du mot)
-                if query_lower == "":
-                    all_items = [(k, v) for k, v in dico.items() if v <= 2000]
-                else:
-                    # Recherche instantanée par le début
-                    all_items = [(k, v) for k, v in dico.items() if k.lower().startswith(query_lower)]
+                    query_lower = query.lower()
+                    filtered_items = []
 
-                # 4. Tri rapide par prix
-                all_items.sort(key=lambda x: x[1])
+                    # Filtrage optimisé
+                    for k, v in dico.items():
+                        if query_lower in k.lower():
+                            filtered_items.append((k, v))
+                        if len(filtered_items) >= 15:
+                            break
 
-                # 5. Création des contrôles (Limité à 15 pour la vitesse de rendu)
-                new_controls = []
-                for n, p in all_items[:15]:
-                    # Attribution rapide de la couleur
-                    if p <= 2000:
-                        clr = ft.Colors.GREEN_400
-                    elif p <= 7000:
-                        clr = ft.Colors.ORANGE_400
-                    else:
-                        clr = ft.Colors.PURPLE_400
+                    new_controls = []
+                    for n, p in filtered_items:
+                        # Déterminer la catégorie de prix
+                        if p <= 2000:
+                            t, clr = "Éco", ft.Colors.GREEN_400
+                        elif p <= 7000:
+                            t, clr = "Moyen", ft.Colors.ORANGE_400
+                        else:
+                            t, clr = "Premium", ft.Colors.PURPLE_400
 
-                    new_controls.append(
-                        ft.Container(
-                            content=ft.ListTile(
-                                leading=ft.Icon(ft.Icons.RESTAURANT_MENU, color=clr, size=20),
-                                title=ft.Text(n, weight="w500", size=14),
-                                subtitle=ft.Text(f"{p} FCFA", size=12),
-                                trailing=ft.IconButton(
-                                    ft.Icons.ADD_CIRCLE,
-                                    icon_color=CP,
-                                    on_click=lambda _, n=n, p=p: add_item(n, p)
+                        new_controls.append(
+                            ft.Container(
+                                content=ft.ListTile(
+                                    leading=ft.Icon(ft.Icons.RESTAURANT_MENU, color=clr, size=20),
+                                    title=ft.Text(n, weight="w500", size=14),
+                                    subtitle=ft.Text(f"{p} FCFA • {t}", size=12),
+                                    trailing=ft.IconButton(
+                                        ft.Icons.ADD_CIRCLE,
+                                        icon_color=CP,
+                                        on_click=lambda _, n=n, p=p: add_item(n, p)
+                                    ),
                                 ),
-                            ),
-                            border=ft.border.all(1, ft.Colors.GREY_100),
-                            border_radius=10,
-                            margin=ft.margin.only(bottom=5)
+                                border=ft.border.all(1, ft.Colors.GREY_100),
+                                border_radius=10,
+                                margin=ft.margin.only(bottom=5)
+                            )
                         )
-                    )
 
-                # 6. Mise à jour immédiate
-                search_results.controls = new_controls
-                page.update()
+                    search_results.controls = new_controls
+                    page.update()
+                except Exception as e:
+                    print(f"Erreur dans perform_search: {e}")
 
-            except Exception as e:
-                print(f"Erreur recherche instantanée : {e}")
+            # 3. On relance le timer (Délai de 300ms)
+            search_timer = threading.Timer(0.3, perform_search)
+            search_timer.start()
 
         # --- MISE EN PAGE FINALE ---
         page.add(
@@ -3573,6 +2911,7 @@ def main(page: ft.Page):
                     ft.Container(content=ft.Column([chips_row, search_results], scroll=ft.ScrollMode.AUTO), height=250,
                                  padding=10, border=ft.border.all(1, "#EEEEEE"), border_radius=12),
 
+
                     ft.ElevatedButton(
                         "GÉNÉRER MON PLANNING",
                         icon=ft.Icons.AUTO_AWESOME,
@@ -3595,3 +2934,4 @@ def main(page: ft.Page):
 
 
 ft.app(target=main)
+
