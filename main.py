@@ -2360,102 +2360,50 @@ def main(page: ft.Page):
 
                 import urllib.parse
 
+                import urllib.parse
+                import flet as ft
+
                 def envoyer_commande_kit(e):
                     try:
-                        # 1. Vérification connexion
-                        requests.get('https://www.google.com', timeout=5)
-
-                        # 2. Animation visuelle immédiate
+                        # 1. Animation visuelle du bouton
                         btn_kit.disabled = True
                         btn_kit.content = ft.ProgressRing(width=20, height=20, color="white")
                         page.update()
 
-                        # 3. Récupération et nettoyage des données
-                        user_info = get_user_session()
-                        # Supabase gère souvent le "created_at" automatiquement,
-                        # mais on prépare les données proprement.
+                        # 2. Préparation des données
+                        # On s'assure que le numéro est une chaîne propre sans '+' ni espaces
+                        phone = "22949498882"
 
-                        prix_clean = "".join(filter(str.isdigit, total_txt.value))
-                        prix_numerique = int(prix_clean) if prix_clean else 0
-
-                        # 4. ENVOI SUPABASE (Remplace Firebase)
-                        # Note : 'panier' doit être une colonne de type JSONB dans ta table Supabase
-                        try:
-                            data_supabase = {
-                                "nom_client": user_info.get("nom", "Client"),
-                                "telephone": user_info.get("tel", "Inconnu"),
-                                "ville": user_info.get("ville", "Non précisée"),
-                                "quartier": user_info.get("quartier", "Non précisé"),
-                                "type_commande": "KIT_CUISINE",
-                                "nom_plat": plat_name,
-                                "panier": panier_kit,
-                                "total_paye": prix_numerique,
-                                "statut": "En attente"
-                            }
-                            # .insert() envoie les données dans la table 'commandes'
-                            phone=22949498882
-                            message="Salut"
-                            url = f"whatsapp://send?phone={phone} &text={message}"
-
-                            # Lancement de l'URL
-                            page.launch_url(url)
-
-
-                        except Exception as ex:
-                            print(f"Erreur Supabase : {ex}")
-
-                        # 5. ENREGISTREMENT SQLITE LOCAL & FIDÉLITÉ
-                        try:
-                            nom = user_info.get("nom", "Client")
-
-                            # Gestion Commandes locales
-                            with sqlite3.connect("commandes.db") as conn:
-                                cursor = conn.cursor()
-                                cursor.execute('''
-                                    INSERT INTO commandes (date_commande, nom_plat, prix_total, ingredients)
-                                    VALUES (datetime('now'), ?, ?, ?)
-                                ''', (plat_name, prix_numerique, ", ".join(panier_kit)))
-
-                            # Gestion Fidélité
-                            with sqlite3.connect('fidelite.db') as conn:
-                                cursor = conn.cursor()
-                                cursor.execute('INSERT OR IGNORE INTO clients (nom, points) VALUES (?, 0)', (nom,))
-                                cursor.execute('UPDATE clients SET points = points + 1 WHERE nom = ?', (nom,))
-
-                        except Exception as ex:
-                            print(f"Erreur SQLite : {ex}")
-
-                        # 6. AFFICHAGE DU DIALOGUE DE SUCCÈS
-                        dlg = ft.AlertDialog(
-                            modal=True,
-                            title=ft.Text("Commande bien reçue !", weight="bold", text_align=ft.TextAlign.CENTER),
-                            content=ft.Column([
-                                ft.Icon(ft.Icons.PHONE_IN_TALK_ROUNDED, color="orange", size=60),
-                                ft.Text("Restez à côté de votre téléphone.", weight="bold", size=16,
-                                        text_align=ft.TextAlign.CENTER),
-                                ft.Text("Notre équipe va vous appeler d'ici 5 minutes.", size=14,
-                                        text_align=ft.TextAlign.CENTER),
-                            ], tight=True, spacing=20, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
-                            actions=[
-                                ft.ElevatedButton(
-                                    "D'ACCORD",
-                                    on_click=lambda _: close_dlg(dlg),
-                                    bgcolor="orange", color="white",
-                                )
-                            ],
-                            actions_alignment=ft.MainAxisAlignment.CENTER,
+                        # On construit un message propre avec les infos de la commande
+                        message_brut = (
+                            f"Bonjour, je souhaite commander :\n"
+                            f"- Plat : {plat_name}\n"
+                            f"- Panier : {', '.join(panier_kit)}\n"
+                            f"- Total : {total_txt.value}"
                         )
 
-                        page.overlay.append(dlg)
-                        dlg.open = True
-                        page.update()
+                        # Crucial : On encode le message pour les URLs (ex: les espaces deviennent %20)
+                        message_encoded = urllib.parse.quote(message_brut)
 
-                    except requests.RequestException:
+                        # 3. Méthode Intent Android (La plus fiable pour forcer l'ouverture de l'app)
+                        whatsapp_url = (
+                            f"intent://send?phone={phone}&text={message_encoded}"
+                            "#Intent;package=com.whatsapp;scheme=whatsapp;end"
+                        )
+
+                        # 4. Lancement
+                        page.launch_url(whatsapp_url)
+
+                        # 5. Réinitialisation de l'interface
                         btn_kit.disabled = False
                         btn_kit.content = ft.Text("COMMANDER LE KIT", weight="bold")
                         page.update()
-                        # Fonction no_connexion() supposée existante
-                        no_connexion()
+
+                    except Exception as ex:
+                        print(f"Erreur lors de l'ouverture de WhatsApp : {ex}")
+                        btn_kit.disabled = False
+                        btn_kit.content = ft.Text("COMMANDER LE KIT", weight="bold")
+                        page.update()
 
                 def close_dlg(dlg):
                     dlg.open = False
@@ -3649,4 +3597,3 @@ def main(page: ft.Page):
 
 
 ft.app(target=main)
-
