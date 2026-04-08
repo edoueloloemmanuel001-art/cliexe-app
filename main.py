@@ -522,6 +522,183 @@ def main(page: ft.Page):
     page.scroll = "auto"
     page.theme_mode = ft.ThemeMode.LIGHT
     test = 21
+    def render_splash(page: ft.Page):
+
+        page.clean()
+        page.padding = 0
+
+        logo = ft.Image(
+            src="logo.png",
+            width=140,
+            height=140,
+            fit="contain"
+        )
+
+        loader = ft.ProgressRing(width=28, height=28, stroke_width=3)
+
+        card = ft.Container(
+            content=ft.Column(
+                [
+                    logo,
+                    ft.Container(height=10),
+                    ft.Text("Chargement...", color="white"),
+                    ft.Container(height=15),
+                    loader
+                ],
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER
+            ),
+            width=220,
+            height=260,
+            bgcolor=ft.Colors.with_opacity(0.15, "white"),
+            border_radius=20,
+            alignment=ft.Alignment(0,0),
+            padding=20
+        )
+
+        splash = ft.Container(
+            content=ft.Stack(
+                [
+                    ft.Container(
+                        expand=True,
+                        gradient=ft.LinearGradient(
+                            begin=ft.alignment.Alignment(-1, -1),
+                            end=ft.alignment.Alignment(1, 1),
+                            colors=["#0f2027", "#203a43", "#2c5364"]
+                        )
+                    ),
+                    ft.Container(
+                        content=card,
+                        alignment=ft.Alignment(0,0),
+                        expand=True
+                    )
+                ]
+            ),
+            expand=True
+        )
+
+        page.add(splash)
+        page.update()
+
+        async def load():
+            await asyncio.sleep(2)
+            format_date = "%Y-%m-%d %H:%M:%S"
+            maintenant = datetime.now()
+            if os.path.exists("commandes.db"):
+                try:
+                    with open("commandes.db", "r") as f:
+                        commandes = json.load(f)
+
+                    if commandes:
+                        # On récupère la date de la dernière commande
+                        # (Supposant que c'est une liste et que la date est dans "date")
+                        derniere_commande = commandes[-1]
+                        date_cmd = datetime.strptime(derniere_commande["date"], format_date)
+
+                        # SI LA DATE EST DÉPASSÉE (plus petite que maintenant)
+                        if maintenant > date_cmd:
+                            print("Date de commande dépassée, redirection vers Home.")
+                            render_home(page)
+                            return  # On arrête le splash ici
+                except Exception as e:
+                    print(f"Erreur lecture commandes: {e}")
+
+                # --- 2. TA LOGIQUE D'EXPIRATION ACTUELLE (CONFIG_FILE) ---
+            if not os.path.exists(CONFIG_FILE):
+                date_limite = maintenant + timedelta(days=90)
+                donnees = {"expiration_date": date_limite.strftime(format_date)}
+                with open(CONFIG_FILE, "w") as f:
+                    json.dump(donnees, f)
+                est_expire = False
+                date_fin_str = date_limite.strftime("%d/%m/%Y")
+            else:
+                with open(CONFIG_FILE, "r") as f:
+                    config = json.load(f)
+                date_limite = datetime.strptime(config["expiration_date"], format_date)
+                date_fin_str = date_limite.strftime("%d/%m/%Y")
+                est_expire = maintenant > date_limite
+            # --- 1. LOGIQUE DE VÉRIFICATION DE LA DATE ---
+            if not os.path.exists(CONFIG_FILE):
+                date_limite = maintenant + timedelta(days=90)
+                donnees = {"expiration_date": date_limite.strftime(format_date)}
+                with open(CONFIG_FILE, "w") as f:
+                    json.dump(donnees, f)
+                est_expire = False
+                date_fin_str = date_limite.strftime("%d/%m/%Y")
+            else:
+                with open(CONFIG_FILE, "r") as f:
+                    config = json.load(f)
+                date_limite = datetime.strptime(config["expiration_date"], format_date)
+                date_fin_str = date_limite.strftime("%d/%m/%Y")
+                est_expire = maintenant > date_limite
+
+            # --- 2. SI EXPIREE : AFFICHER LE DIALOGUE ET STOP ---
+            if est_expire:
+                def fermer_app(e):
+                    page.window_close(page)
+                    sys.exit()
+
+                # Remplace l'ID après 'id=' par celui de ton application
+                play_store_url = "https://play.google.com/store/apps/details?id=ton.package.name"
+
+                dialogue_expiration = ft.AlertDialog(
+                    modal=True,
+                    title=ft.Row(
+                        [ft.Icon(ft.Icons.UPDATE, color="red"), ft.Text("Mise à jour requise")],
+                        alignment=ft.MainAxisAlignment.START,
+                    ),
+                    content=ft.Text(
+                        f"Votre version d'essai a expiré le {date_fin_str}.\n"
+                        "Veuillez télécharger la version complète sur le Play Store pour continuer.",
+                        size=16
+                    ),
+                    actions=[
+                        ft.ElevatedButton(
+                            "Ouvrir le Play Store",
+                            icon=ft.Icons.SHOPPING_BAG,
+                            bgcolor=ft.Colors.GREEN_700,
+                            color=ft.Colors.WHITE,
+                            on_click=lambda _: page.launch_url(play_store_url)
+                        ),
+                        ft.TextButton("Plus tard", on_click=fermer_app),
+                    ],
+                    actions_alignment=ft.MainAxisAlignment.END,
+                )
+
+                page.overlay.append(dialogue_expiration)
+                page.update()
+
+                # Petit délai pour garantir l'affichage sur Android
+                import time
+                time.sleep(0.1)
+
+                dialogue_expiration.open = True
+                page.update()
+                return
+
+            # --- 3. SI NON EXPIREE : LOGIQUE DE SESSION ET SQLITE ---
+            if os.path.exists("session_utilisateur.txt"):
+                try:
+                    # Vérification de la base de données
+                    conn = sqlite3.connect("repas_db.sqlite")
+                    c = conn.cursor()
+                    c.execute("SELECT COUNT(*) FROM planning")
+                    count = c.fetchone()[0]
+                    conn.close()
+
+                    if count > 0:
+                        render_final_view(page)
+                    else:
+                        render_home(page)
+
+                except Exception as e:
+                    print(f"Erreur lors de la lecture : {e}")
+                    go_to_login(page)
+            else:
+                print("Aucun fichier de session trouvé.")
+                go_to_login(page)
+
+        page.run_task(load)
+    render_splash(page)
 
     # --- COMPOSANTS DE SAISIE ---
 
@@ -1856,182 +2033,7 @@ def main(page: ft.Page):
 
 
     import asyncio
-    def render_splash(page: ft.Page):
 
-        page.clean()
-        page.padding = 0
-
-        logo = ft.Image(
-            src="logo.png",
-            width=140,
-            height=140,
-            fit="contain"
-        )
-
-        loader = ft.ProgressRing(width=28, height=28, stroke_width=3)
-
-        card = ft.Container(
-            content=ft.Column(
-                [
-                    logo,
-                    ft.Container(height=10),
-                    ft.Text("Chargement...", color="white"),
-                    ft.Container(height=15),
-                    loader
-                ],
-                horizontal_alignment=ft.CrossAxisAlignment.CENTER
-            ),
-            width=220,
-            height=260,
-            bgcolor=ft.Colors.with_opacity(0.15, "white"),
-            border_radius=20,
-            alignment=ft.Alignment(0,0),
-            padding=20
-        )
-
-        splash = ft.Container(
-            content=ft.Stack(
-                [
-                    ft.Container(
-                        expand=True,
-                        gradient=ft.LinearGradient(
-                            begin=ft.alignment.Alignment(-1, -1),
-                            end=ft.alignment.Alignment(1, 1),
-                            colors=["#0f2027", "#203a43", "#2c5364"]
-                        )
-                    ),
-                    ft.Container(
-                        content=card,
-                        alignment=ft.Alignment(0,0),
-                        expand=True
-                    )
-                ]
-            ),
-            expand=True
-        )
-
-        page.add(splash)
-        page.update()
-
-        async def load():
-            await asyncio.sleep(2)
-            format_date = "%Y-%m-%d %H:%M:%S"
-            maintenant = datetime.now()
-            if os.path.exists("commandes.db"):
-                try:
-                    with open("commandes.db", "r") as f:
-                        commandes = json.load(f)
-
-                    if commandes:
-                        # On récupère la date de la dernière commande
-                        # (Supposant que c'est une liste et que la date est dans "date")
-                        derniere_commande = commandes[-1]
-                        date_cmd = datetime.strptime(derniere_commande["date"], format_date)
-
-                        # SI LA DATE EST DÉPASSÉE (plus petite que maintenant)
-                        if maintenant > date_cmd:
-                            print("Date de commande dépassée, redirection vers Home.")
-                            render_home(page)
-                            return  # On arrête le splash ici
-                except Exception as e:
-                    print(f"Erreur lecture commandes: {e}")
-
-                # --- 2. TA LOGIQUE D'EXPIRATION ACTUELLE (CONFIG_FILE) ---
-            if not os.path.exists(CONFIG_FILE):
-                date_limite = maintenant + timedelta(days=90)
-                donnees = {"expiration_date": date_limite.strftime(format_date)}
-                with open(CONFIG_FILE, "w") as f:
-                    json.dump(donnees, f)
-                est_expire = False
-                date_fin_str = date_limite.strftime("%d/%m/%Y")
-            else:
-                with open(CONFIG_FILE, "r") as f:
-                    config = json.load(f)
-                date_limite = datetime.strptime(config["expiration_date"], format_date)
-                date_fin_str = date_limite.strftime("%d/%m/%Y")
-                est_expire = maintenant > date_limite
-            # --- 1. LOGIQUE DE VÉRIFICATION DE LA DATE ---
-            if not os.path.exists(CONFIG_FILE):
-                date_limite = maintenant + timedelta(days=90)
-                donnees = {"expiration_date": date_limite.strftime(format_date)}
-                with open(CONFIG_FILE, "w") as f:
-                    json.dump(donnees, f)
-                est_expire = False
-                date_fin_str = date_limite.strftime("%d/%m/%Y")
-            else:
-                with open(CONFIG_FILE, "r") as f:
-                    config = json.load(f)
-                date_limite = datetime.strptime(config["expiration_date"], format_date)
-                date_fin_str = date_limite.strftime("%d/%m/%Y")
-                est_expire = maintenant > date_limite
-
-            # --- 2. SI EXPIREE : AFFICHER LE DIALOGUE ET STOP ---
-            if est_expire:
-                def fermer_app(e):
-                    page.window_close(page)
-                    sys.exit()
-
-                # Remplace l'ID après 'id=' par celui de ton application
-                play_store_url = "https://play.google.com/store/apps/details?id=ton.package.name"
-
-                dialogue_expiration = ft.AlertDialog(
-                    modal=True,
-                    title=ft.Row(
-                        [ft.Icon(ft.Icons.UPDATE, color="red"), ft.Text("Mise à jour requise")],
-                        alignment=ft.MainAxisAlignment.START,
-                    ),
-                    content=ft.Text(
-                        f"Votre version d'essai a expiré le {date_fin_str}.\n"
-                        "Veuillez télécharger la version complète sur le Play Store pour continuer.",
-                        size=16
-                    ),
-                    actions=[
-                        ft.ElevatedButton(
-                            "Ouvrir le Play Store",
-                            icon=ft.Icons.SHOPPING_BAG,
-                            bgcolor=ft.Colors.GREEN_700,
-                            color=ft.Colors.WHITE,
-                            on_click=lambda _: page.launch_url(play_store_url)
-                        ),
-                        ft.TextButton("Plus tard", on_click=fermer_app),
-                    ],
-                    actions_alignment=ft.MainAxisAlignment.END,
-                )
-
-                page.overlay.append(dialogue_expiration)
-                page.update()
-
-                # Petit délai pour garantir l'affichage sur Android
-                import time
-                time.sleep(0.1)
-
-                dialogue_expiration.open = True
-                page.update()
-                return
-
-            # --- 3. SI NON EXPIREE : LOGIQUE DE SESSION ET SQLITE ---
-            if os.path.exists("session_utilisateur.txt"):
-                try:
-                    # Vérification de la base de données
-                    conn = sqlite3.connect("repas_db.sqlite")
-                    c = conn.cursor()
-                    c.execute("SELECT COUNT(*) FROM planning")
-                    count = c.fetchone()[0]
-                    conn.close()
-
-                    if count > 0:
-                        render_final_view(page)
-                    else:
-                        render_home(page)
-
-                except Exception as e:
-                    print(f"Erreur lors de la lecture : {e}")
-                    go_to_login(page)
-            else:
-                print("Aucun fichier de session trouvé.")
-                go_to_login(page)
-
-        page.run_task(load)
 
     # --- DIALOGUE D'EXPIRATION (Séparé pour la clarté) ---
     def show_expiration_dialog(page, date_fin_str):
@@ -3059,7 +3061,7 @@ def main(page: ft.Page):
         show_results()
         page.update()
 
-    render_splash(page)
+
 
 
 ft.app(target=main)
