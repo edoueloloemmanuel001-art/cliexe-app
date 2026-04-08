@@ -3,4 +3,4 @@ name = "CLIEXE"
 version = "1.0.0"
 
 [tool.flet]
-app_icon = "logo.png"
+app_icon = "icon.png"
