@@ -1,4 +1,6 @@
 android:
+  icon: "icon.png"
+
   splash:
     color: "#0f2027"
     image: "logo.png"
