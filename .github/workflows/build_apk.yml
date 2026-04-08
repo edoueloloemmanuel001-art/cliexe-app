@@ -17,21 +17,35 @@ jobs:
           python-version: "3.11"
 
       - name: Installer Flet
-        run: |
-          pip install flet
+        run: pip install flet
 
       - name: Installer Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
 
-      - name: Build APK
-        run: |
-          flet build apk
+      # 1. Build initial (crée le dossier android)
+      - name: Build initial APK
+        run: flet build apk
 
+      # 2. Remplacer l’icône (ICI LA CORRECTION)
+      - name: Replace app icon
+        run: |
+          cp icon.png build/android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+          cp icon.png build/android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+          cp icon.png build/android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+          cp icon.png build/android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+          cp icon.png build/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+
+      # 3. Rebuild final (IMPORTANT)
+      - name: Final APK build
+        run: |
+          cd build/android
+          ./gradlew assembleRelease
+
+      # 4. Upload
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: flet-apk
-          path: build/apk/
-      
+          path: build/android/app/build/outputs/apk/release/
