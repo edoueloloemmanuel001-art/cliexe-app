@@ -2190,15 +2190,32 @@ def main(page: ft.Page):
             # On insère l'utilisateur actuel s'il n'existe pas
             cursor.execute('INSERT OR IGNORE INTO clients (nom, points) VALUES (?, 0)', (nom_utilisateur,))
             conn.commit()
+            SESSION_FILE = "session_utilisateur.txt"
+
+            def get_user_session():
+                """Récupère les infos de l'utilisateur stockées localement"""
+                try:
+                    with open(SESSION_FILE, "r", encoding="utf-8") as f:
+                        return json.loads(f.read())
+                except:
+                    return {"nom": "Client Inconnu", "tel": "Non spécifié", "ville": "N/A", "quartier": "N/A"}
+
+            user_info = get_user_session()
+            nom_client = user_info.get("nom", "Client")
 
             # On récupère ses points
             cursor.execute('SELECT points FROM clients WHERE nom = ?', (nom_utilisateur,))
             resultat = cursor.fetchone()
-            if resultat and len(resultat) > 0:
-                points_actuels = resultat[0]
-            else:
-                points_actuels = 0
+            conn = sqlite3.connect('fidelite.db')
+            cursor = conn.cursor()
+            cursor.execute('INSERT OR IGNORE INTO clients (nom, points) VALUES (?, 0)', (nom_client,))
+            conn.commit()
+
+            cursor.execute('SELECT points FROM clients WHERE nom = ?', (nom_client,))
+            resultat = cursor.fetchone()
             conn.close()
+
+            points_actuels = resultat[0] if resultat else 0
 
 
 
@@ -2315,7 +2332,7 @@ def main(page: ft.Page):
             # 4. Interface de base
             lv = ft.ListView(expand=True, spacing=0, padding=15)
             repas_labels = ["Petit-déjeuner", "Déjeuner", "Dîner", "Goûter", "Extra"]
-            if os.path.exists("session_utilisateur.json"):
+            if os.path.exists("session_utilisateur.txt"):
                 mns = "Se deconnecter"
             else:
                 mns = "Se connecter"
