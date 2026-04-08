@@ -1,0 +1,7 @@
+android:
+  splash:
+    color: "#0f2027"
+    image: "logo.png"
+    android_12:
+      image: "logo.png"
+      color: "#0f2027"
