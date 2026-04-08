@@ -6,117 +6,7 @@ import requests
 import pyrebase
 import os
 from Combi import *
-CONFIG_FILE = ".app_config.json"
-config = {
-    "apiKey": "AIzaSyCLcq-6e7a02DkJJDKGc24z3psQ09Lk9Cw",
-    "authDomain": "cliexe-apk.firebaseapp.com",
-    "projectId": "cliexe-apk",
-    "storageBucket": "cliexe-apk.firebasestorage.app",
-    "messagingSenderId": "444886785936",
-    "appId": "1:444886785936:web:8b0f997d8da3e085161d15",
-    "databaseURL": "https://cliexe-apk-default-rtdb.firebaseio.com"
-}
 
-# Initialisation globale
-
-firebase = pyrebase.initialize_app(config)
-auth = firebase.auth()
-db = firebase.database()
-CP = "#5D8A66"  # Vert Primaire
-CS = "#4A6D52"  # Vert Secondaire
-CA = "#D1E0D5"  # Vert Accent (pour les puces/chips)
-CBG = "#F8F9FA"  # Fond de page
-CC = "#FFFFFF"  # Fond de carte
-CT1 = "#2D2D2D"  # Texte Titre
-CT2 = "#757575"  # Texte Sous-titre
-CERR = "#D32F2F"  # Rouge Erreur
-
-DELIVERY_TODAY = 500
-DELIVERY_TOMORROW = 300
-# --- CONFIGURATION VISUELLE ---
-JOURS_FR = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
-MOIS_FR = ["Janv.", "Févr.", "Mars", "Avril", "Mai", "Juin", "Juil.", "Août", "Sept.", "Oct.", "Nov.", "Déc."]
-import itertools
-lisa1={}
-bases2a1 ={"TEKON(IGNAME BOULLIE)":["igname","sel"],"ABLO":["farine de mais","farine de riz","sucre","sel","levure boulanger"],"DJINKOUME":["farine mais"],"COUSCOUS":["couscou","huil","sel"],"KOLIKO":["igname","huil","sel"],"TIMBANI":["haricos","sel"],"RIZ":["riz","sel"],"AMANDA(ALLOCO)":["bananes plantain","huil","sel"],"AYIMOLOU":["haricot","riz","potasse"],"SPAGHETTI":["spaghetti","sel"]}
-proteines2a1={"RIEN ":[""],"AKPALAN(POISSON FUME)":["AKPALAN(POISSON FUME)"],"DEUEVI(PETIT POISSON)":["DEUEVI(PETIT POISSON)"],"APKALAN KANAMI(POISSON FRIT)":["APKALAN KANAMI(POISSON FRIT)"],"POULET":["VIANDE DE POULET"],"BOEUF":["VIANDE DE BOEUF"],"MOUTON":["VIANDE DE MOUTON"],"AKPAME(PEAU DE BOEUF)":["AKPAME(PEAU DE BOEUF)"],"AGLAN(CRABE)":["AGLAN(CRABE)"],"CREVETTE":["CREVETTE"]}
-sauces2a1={"TOMATE":["TOMATE FRAIS","TOMATE CONCENTRE","HUIL VEGETAL","OIGNON","CUBE","SEL","AIL","PIMENT FRAIS","PIMENT EN POUDRE","POTASE",],}
-basesa1 ={"FOUFOU IGNAME":["igname","sel"],"FOUFOU PLANTAIN":["bananas plantains","sel"],"AKOUME(PATE MAIS)":["Farine de mais"],"EMAKUME(PATE MAIS FERMENTE)":["Farine de mais","pate de mais fermenter"],"Riz":["riz","sel"]}
-proteinesa1={"RIEN ":[""],"AKPALAN(POISSON FUME)":["AKPALAN(POISSON FUME)"],"DEUEVI(PETIT POISSON)":["DEUEVI(PETIT POISSON)"],"APKALAN KANAMI(POISSON FRIT)":["APKALAN KANAMI(POISSON FRIT)"],"POULET":["VIANDE DE POULET"],"BOEUF":["VIANDE DE BOEUF"],"MOUTON":["VIANDE DE MOUTON"],"AKPAME(PEAU DE BOEUF)":["AKPAME(PEAU DE BOEUF)"],"AGLAN(CRABE)":["AGLAN(CRABE)"],"CREVETTE":["CREVETTE"]}
-saucesa1={"GBOMA":["oignon","gingembre"," ail","Tomate frais","piment frais","tomate concentre","huil rouge","sel","feuille de gboma","cube"],"TOMATE":["TOMATE FRAIS","TOMATE CONCENTRE","HUIL VEGETAL","OIGNON","CUBE","SEL","AIL","PIMENT FRAIS","PIMENT EN POUDRE","POTASE",],"GOUSSI":["sel","oignon","Graine de courge","tomate frais","piment frais","Tomate concentre","cube"],"ADEME":["feuilles ademe","gingembre","oignon","piment frais","huile rouge","sel","potasse","poisson fermente","cube"],"FETRI(GOMBO)":["gombo","tomate frais","oignon","piment frais","sel","gingembre","cube"],"KODORO":["oignon","gingembre","ail","piment frais","sel"," Afiti","Feuille de baobab","cube"],"GNATOU":["Feuille de gnatou","Huil rouge","pate d´arachide","piment frais","oignon","cube","sel","afiti","ail"],"ARACHIDE":["oignon","ail","gingembre","pate d´arachide","tomate frais", "piment frais","sel","tomate concentre","cube"],"CHOU":["TOMATE FRAIS","TOMATE CONCENTRE","HUIL VEGETAL","OIGNON","CUBE","SEL","AIL","PIMENT FRAIS","PIMENT EN POUDRE","POTASE", "choux"],"FETRI POUPOU(GONBO SEC)":["gombo sec","tomate frais","oignon","piment frais","piment en poudre","sel","gingembre","cube"],"DEKOU(GRAINE)":["gingembre","oignon","ail","Sel","tomate frais","oignon","piment frais","Noi de palme","cube"],"EBESSESSI":["piment frais","oignon","tomate","sel","gingembre","cube"],}
-dica1={
-    "DEGUE":["lait","couscous","sucre","glace","arachide"],"TAPIOCA ZOGBON":["tapioca","sel","sucre","lait en poudre"],"ATTIEKE POISSON":["poisson frais","attieke","oignon","ail","piment frai","huile d´arachide","sel"],"SPAGHETTI BLANC":["spagheti sel"],"SALADE":["Laitue","Tomate","oignon","Beterave","Carotte","Concombre","Mayonnaise","cube","sardine","oeuf","spagheti","huil","vinaigre","pain"],"HARICO HUIL ROUGE":["harico","sel","potasse","oignon","ail","huil rouge","Gari"],"HARICO HUIL ARACHIDE":["harico","sel","potasse","oignon","ail","huil d´arachide","Gari"]
-}
-lisa1.update(dica1)
-import itertools
-
-# --- VOS DONNÉES ---
-# (Je regroupe directement les dictionnaires pour la clarté)
-
-import itertools
-
-import itertools
-
-# --- 1. SOURCES DES DONNÉES ---
-
-dict_final = {}
-
-# A. Génération des combinaisons composées (15 bases * 12 sauces * 10 protéines = 1800)
-combinaisons = list(itertools.product(basesa1.keys(), proteinesa1.keys(), saucesa1.keys()))
-combinaisons2 = list(itertools.product(bases2a1.keys(), proteines2a1.keys(), sauces2a1.keys()))
-
-# --- FONCTIONS ET BOUCLES (VOTRE STYLE) ---
-lis={}
-lis.update(dica1)
-def afficfer(combi):
-    # Cette fonction déballe la combinaison actuelle
-    b, p, s = combi
-    return b, p, s
-
-def afficfer2(combi2):
-    # Cette fonction déballe la combinaison du groupe 2
-    b2, p2, s2 = combi2
-    return b2, p2, s2
-
-# Boucle pour le premier groupe
-for combi in combinaisons:
-    b, p, s = afficfer(combi)
-    nom = f"{b} Sauce {s} avec {p}"
-    # Fusion des listes d'ingrédients
-    valeur = basesa1[b] + proteinesa1[p] + saucesa1[s]
-    lis[nom] = valeur
-
-# Boucle pour le deuxième groupe
-for combi2 in combinaisons2:
-    b2, p2, s2 = afficfer2(combi2)
-    nom2 = f"{b2} Sauce {s2} avec {p2}"
-    # Fusion des listes d'ingrédients
-    valeur2 = bases2a1[b2] + proteines2a1[p2] + sauces2a1[s2]
-    lis[nom2] = valeur2
-
-
-
-
-RECIPES = lis
-
-# --- LOGIQUE POUR COMPLÉTER JUSQU'À 1000 ---
-# Pour éviter que l'app ne plante, on attribue une liste d'ingrédients de base
-# aux variantes générées automatiquement.
-
-
-
-# --- BASES DE DONNÉES (Coût des ingrédients par personne) ---
-import itertools
-#-------------------
-with open("lili.json", "r", encoding="utf-8") as f:
-    MARKET_ITEMS= json.load(f)
-
-from Combi import PLATS_PETIT_COMITE,PLATS_FAMILLE,PLATS_GRANDE_TABLE
-
-
-
-# État de l'application
-state = {"plats_selectionnes": {}, "planning_genere": []}
 
 
 
@@ -302,6 +192,156 @@ def main(page: ft.Page):
 
         page.run_task(load)
     render_splash(page)
+    CONFIG_FILE = ".app_config.json"
+    config = {
+        "apiKey": "AIzaSyCLcq-6e7a02DkJJDKGc24z3psQ09Lk9Cw",
+        "authDomain": "cliexe-apk.firebaseapp.com",
+        "projectId": "cliexe-apk",
+        "storageBucket": "cliexe-apk.firebasestorage.app",
+        "messagingSenderId": "444886785936",
+        "appId": "1:444886785936:web:8b0f997d8da3e085161d15",
+        "databaseURL": "https://cliexe-apk-default-rtdb.firebaseio.com"
+    }
+
+    # Initialisation globale
+
+    firebase = pyrebase.initialize_app(config)
+    auth = firebase.auth()
+    db = firebase.database()
+    CP = "#5D8A66"  # Vert Primaire
+    CS = "#4A6D52"  # Vert Secondaire
+    CA = "#D1E0D5"  # Vert Accent (pour les puces/chips)
+    CBG = "#F8F9FA"  # Fond de page
+    CC = "#FFFFFF"  # Fond de carte
+    CT1 = "#2D2D2D"  # Texte Titre
+    CT2 = "#757575"  # Texte Sous-titre
+    CERR = "#D32F2F"  # Rouge Erreur
+
+    DELIVERY_TODAY = 500
+    DELIVERY_TOMORROW = 300
+    # --- CONFIGURATION VISUELLE ---
+    JOURS_FR = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
+    MOIS_FR = ["Janv.", "Févr.", "Mars", "Avril", "Mai", "Juin", "Juil.", "Août", "Sept.", "Oct.", "Nov.", "Déc."]
+    import itertools
+    lisa1 = {}
+    bases2a1 = {"TEKON(IGNAME BOULLIE)": ["igname", "sel"],
+                "ABLO": ["farine de mais", "farine de riz", "sucre", "sel", "levure boulanger"],
+                "DJINKOUME": ["farine mais"], "COUSCOUS": ["couscou", "huil", "sel"],
+                "KOLIKO": ["igname", "huil", "sel"], "TIMBANI": ["haricos", "sel"], "RIZ": ["riz", "sel"],
+                "AMANDA(ALLOCO)": ["bananes plantain", "huil", "sel"], "AYIMOLOU": ["haricot", "riz", "potasse"],
+                "SPAGHETTI": ["spaghetti", "sel"]}
+    proteines2a1 = {"RIEN ": [""], "AKPALAN(POISSON FUME)": ["AKPALAN(POISSON FUME)"],
+                    "DEUEVI(PETIT POISSON)": ["DEUEVI(PETIT POISSON)"],
+                    "APKALAN KANAMI(POISSON FRIT)": ["APKALAN KANAMI(POISSON FRIT)"], "POULET": ["VIANDE DE POULET"],
+                    "BOEUF": ["VIANDE DE BOEUF"], "MOUTON": ["VIANDE DE MOUTON"],
+                    "AKPAME(PEAU DE BOEUF)": ["AKPAME(PEAU DE BOEUF)"], "AGLAN(CRABE)": ["AGLAN(CRABE)"],
+                    "CREVETTE": ["CREVETTE"]}
+    sauces2a1 = {
+        "TOMATE": ["TOMATE FRAIS", "TOMATE CONCENTRE", "HUIL VEGETAL", "OIGNON", "CUBE", "SEL", "AIL", "PIMENT FRAIS",
+                   "PIMENT EN POUDRE", "POTASE", ], }
+    basesa1 = {"FOUFOU IGNAME": ["igname", "sel"], "FOUFOU PLANTAIN": ["bananas plantains", "sel"],
+               "AKOUME(PATE MAIS)": ["Farine de mais"],
+               "EMAKUME(PATE MAIS FERMENTE)": ["Farine de mais", "pate de mais fermenter"], "Riz": ["riz", "sel"]}
+    proteinesa1 = {"RIEN ": [""], "AKPALAN(POISSON FUME)": ["AKPALAN(POISSON FUME)"],
+                   "DEUEVI(PETIT POISSON)": ["DEUEVI(PETIT POISSON)"],
+                   "APKALAN KANAMI(POISSON FRIT)": ["APKALAN KANAMI(POISSON FRIT)"], "POULET": ["VIANDE DE POULET"],
+                   "BOEUF": ["VIANDE DE BOEUF"], "MOUTON": ["VIANDE DE MOUTON"],
+                   "AKPAME(PEAU DE BOEUF)": ["AKPAME(PEAU DE BOEUF)"], "AGLAN(CRABE)": ["AGLAN(CRABE)"],
+                   "CREVETTE": ["CREVETTE"]}
+    saucesa1 = {
+        "GBOMA": ["oignon", "gingembre", " ail", "Tomate frais", "piment frais", "tomate concentre", "huil rouge",
+                  "sel", "feuille de gboma", "cube"],
+        "TOMATE": ["TOMATE FRAIS", "TOMATE CONCENTRE", "HUIL VEGETAL", "OIGNON", "CUBE", "SEL", "AIL", "PIMENT FRAIS",
+                   "PIMENT EN POUDRE", "POTASE", ],
+        "GOUSSI": ["sel", "oignon", "Graine de courge", "tomate frais", "piment frais", "Tomate concentre", "cube"],
+        "ADEME": ["feuilles ademe", "gingembre", "oignon", "piment frais", "huile rouge", "sel", "potasse",
+                  "poisson fermente", "cube"],
+        "FETRI(GOMBO)": ["gombo", "tomate frais", "oignon", "piment frais", "sel", "gingembre", "cube"],
+        "KODORO": ["oignon", "gingembre", "ail", "piment frais", "sel", " Afiti", "Feuille de baobab", "cube"],
+        "GNATOU": ["Feuille de gnatou", "Huil rouge", "pate d´arachide", "piment frais", "oignon", "cube", "sel",
+                   "afiti", "ail"],
+        "ARACHIDE": ["oignon", "ail", "gingembre", "pate d´arachide", "tomate frais", "piment frais", "sel",
+                     "tomate concentre", "cube"],
+        "CHOU": ["TOMATE FRAIS", "TOMATE CONCENTRE", "HUIL VEGETAL", "OIGNON", "CUBE", "SEL", "AIL", "PIMENT FRAIS",
+                 "PIMENT EN POUDRE", "POTASE", "choux"],
+        "FETRI POUPOU(GONBO SEC)": ["gombo sec", "tomate frais", "oignon", "piment frais", "piment en poudre", "sel",
+                                    "gingembre", "cube"],
+        "DEKOU(GRAINE)": ["gingembre", "oignon", "ail", "Sel", "tomate frais", "oignon", "piment frais", "Noi de palme",
+                          "cube"], "EBESSESSI": ["piment frais", "oignon", "tomate", "sel", "gingembre", "cube"], }
+    dica1 = {
+        "DEGUE": ["lait", "couscous", "sucre", "glace", "arachide"],
+        "TAPIOCA ZOGBON": ["tapioca", "sel", "sucre", "lait en poudre"],
+        "ATTIEKE POISSON": ["poisson frais", "attieke", "oignon", "ail", "piment frai", "huile d´arachide", "sel"],
+        "SPAGHETTI BLANC": ["spagheti sel"],
+        "SALADE": ["Laitue", "Tomate", "oignon", "Beterave", "Carotte", "Concombre", "Mayonnaise", "cube", "sardine",
+                   "oeuf", "spagheti", "huil", "vinaigre", "pain"],
+        "HARICO HUIL ROUGE": ["harico", "sel", "potasse", "oignon", "ail", "huil rouge", "Gari"],
+        "HARICO HUIL ARACHIDE": ["harico", "sel", "potasse", "oignon", "ail", "huil d´arachide", "Gari"]
+    }
+    lisa1.update(dica1)
+    import itertools
+
+    # --- VOS DONNÉES ---
+    # (Je regroupe directement les dictionnaires pour la clarté)
+
+    import itertools
+
+    import itertools
+
+    # --- 1. SOURCES DES DONNÉES ---
+
+    dict_final = {}
+
+    # A. Génération des combinaisons composées (15 bases * 12 sauces * 10 protéines = 1800)
+    combinaisons = list(itertools.product(basesa1.keys(), proteinesa1.keys(), saucesa1.keys()))
+    combinaisons2 = list(itertools.product(bases2a1.keys(), proteines2a1.keys(), sauces2a1.keys()))
+
+    # --- FONCTIONS ET BOUCLES (VOTRE STYLE) ---
+    lis = {}
+    lis.update(dica1)
+
+    def afficfer(combi):
+        # Cette fonction déballe la combinaison actuelle
+        b, p, s = combi
+        return b, p, s
+
+    def afficfer2(combi2):
+        # Cette fonction déballe la combinaison du groupe 2
+        b2, p2, s2 = combi2
+        return b2, p2, s2
+
+    # Boucle pour le premier groupe
+    for combi in combinaisons:
+        b, p, s = afficfer(combi)
+        nom = f"{b} Sauce {s} avec {p}"
+        # Fusion des listes d'ingrédients
+        valeur = basesa1[b] + proteinesa1[p] + saucesa1[s]
+        lis[nom] = valeur
+
+    # Boucle pour le deuxième groupe
+    for combi2 in combinaisons2:
+        b2, p2, s2 = afficfer2(combi2)
+        nom2 = f"{b2} Sauce {s2} avec {p2}"
+        # Fusion des listes d'ingrédients
+        valeur2 = bases2a1[b2] + proteines2a1[p2] + sauces2a1[s2]
+        lis[nom2] = valeur2
+
+    RECIPES = lis
+
+    # --- LOGIQUE POUR COMPLÉTER JUSQU'À 1000 ---
+    # Pour éviter que l'app ne plante, on attribue une liste d'ingrédients de base
+    # aux variantes générées automatiquement.
+
+    # --- BASES DE DONNÉES (Coût des ingrédients par personne) ---
+    import itertools
+    # -------------------
+    with open("lili.json", "r", encoding="utf-8") as f:
+        MARKET_ITEMS = json.load(f)
+
+    from Combi import PLATS_PETIT_COMITE, PLATS_FAMILLE, PLATS_GRANDE_TABLE
+
+    # État de l'application
+    state = {"plats_selectionnes": {}, "planning_genere": []}
 
     # --- COMPOSANTS DE SAISIE ---
 
