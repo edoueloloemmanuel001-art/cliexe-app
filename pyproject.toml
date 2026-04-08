@@ -1,5 +1,5 @@
 [project]
-name = "CLIEXE tableau"
+name = "CLIEXE"
 version = "1.0.0"
 
 [tool.flet]
